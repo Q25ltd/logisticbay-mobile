@@ -1,17 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, SafeAreaView,
   TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from "react-native";
+import * as LocalAuthentication from "expo-local-authentication";
+import * as SecureStore from "expo-secure-store";
 import { COLOURS, Button } from "../components";
 import { useAuth } from "../AuthContext";
 
+const SAVED_EMAIL_KEY = "savedEmail";
+const SAVED_PIN_KEY   = "savedPin";
+const BIO_ENABLED_KEY = "biometricEnabled";
+
 export default function LoginScreen({ navigation }: { navigation: any }) {
   const { login } = useAuth();
-  const [email,    setEmail]    = useState("");
-  const [pin,      setPin]      = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const [showPin,  setShowPin]  = useState(false);
+  const [email,       setEmail]       = useState("");
+  const [pin,         setPin]         = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [showPin,     setShowPin]     = useState(false);
+  const [hasBiometric, setHasBiometric] = useState(false);
+  const [bioEnabled,  setBioEnabled]  = useState(false);
+  const [bioChecked,  setBioChecked]  = useState(false);
+
+  useEffect(() => {
+    checkBiometric();
+  }, []);
+
+  async function checkBiometric() {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled   = await LocalAuthentication.isEnrolledAsync();
+      const enabled    = await SecureStore.getItemAsync(BIO_ENABLED_KEY);
+      const savedEmail = await SecureStore.getItemAsync(SAVED_EMAIL_KEY);
+
+      if (compatible && enrolled) {
+        setHasBiometric(true);
+        if (enabled === "true" && savedEmail) {
+          setBioEnabled(true);
+          setEmail(savedEmail);
+          // Auto-trigger biometric on load
+          setTimeout(() => handleBiometric(), 500);
+        }
+      }
+    } catch {}
+    setBioChecked(true);
+  }
+
+  async function handleBiometric() {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Sign in to LogisticBay",
+        fallbackLabel: "Use PIN instead",
+      });
+
+      if (result.success) {
+        const savedEmail = await SecureStore.getItemAsync(SAVED_EMAIL_KEY);
+        const savedPin   = await SecureStore.getItemAsync(SAVED_PIN_KEY);
+        if (savedEmail && savedPin) {
+          setLoading(true);
+          try {
+            await login(savedEmail, savedPin);
+          } catch {
+            Alert.alert("Sign in failed", "Please sign in with your PIN.");
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+    } catch {}
+  }
 
   async function handleLogin() {
     if (!email.trim()) { Alert.alert("Email is required"); return; }
@@ -19,15 +76,34 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
     setLoading(true);
     try {
-      const mustChangePin = await login(
-        email.toLowerCase().trim(),
-        pin.trim(),
-      );
-      // Navigation happens automatically via AuthContext user state
+      await login(email.toLowerCase().trim(), pin.trim());
+
+      // After successful login, offer to enable biometric
+      if (hasBiometric && !bioEnabled) {
+        Alert.alert(
+          "Enable Face ID / Touch ID?",
+          "Sign in faster next time with biometrics.",
+          [
+            { text: "Not now", style: "cancel" },
+            {
+              text: "Enable",
+              onPress: async () => {
+                await SecureStore.setItemAsync(SAVED_EMAIL_KEY, email.toLowerCase().trim());
+                await SecureStore.setItemAsync(SAVED_PIN_KEY,   pin.trim());
+                await SecureStore.setItemAsync(BIO_ENABLED_KEY, "true");
+              },
+            },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Sign in failed", err.response?.data?.error ?? "Check your email and PIN");
     } finally {
       setLoading(false);
     }
   }
+
+  if (!bioChecked) return null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -39,6 +115,15 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
           <Text style={styles.logo}>Logistic<Text style={{ color: COLOURS.accent }}>Bay</Text></Text>
           <Text style={styles.subtitle}>Driver App — Sign in to continue</Text>
         </View>
+
+        {/* Biometric button — shown if enabled */}
+        {bioEnabled && (
+          <TouchableOpacity style={styles.bioBtn} onPress={handleBiometric} disabled={loading}>
+            <Text style={styles.bioIcon}>🔐</Text>
+            <Text style={styles.bioBtnText}>Sign in with Face ID / Touch ID</Text>
+            <Text style={styles.bioBtnSub}>or enter your PIN below</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.label}>Email Address</Text>
@@ -82,6 +167,18 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
           style={styles.loginBtn}
         />
 
+        {/* Disable biometric option */}
+        {bioEnabled && (
+          <TouchableOpacity onPress={async () => {
+            await SecureStore.deleteItemAsync(BIO_ENABLED_KEY);
+            await SecureStore.deleteItemAsync(SAVED_PIN_KEY);
+            setBioEnabled(false);
+            Alert.alert("Biometrics disabled", "You can re-enable after signing in.");
+          }}>
+            <Text style={styles.disableBio}>Disable Face ID / Touch ID</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.footer}>
           Forgot your PIN? Ask your manager to reset it.
         </Text>
@@ -93,9 +190,16 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: COLOURS.background },
   inner:        { flex: 1, padding: 24, justifyContent: "center" },
-  header:       { alignItems: "center", marginBottom: 32 },
+  header:       { alignItems: "center", marginBottom: 24 },
   logo:         { fontSize: 32, fontWeight: "900", color: COLOURS.primary, marginBottom: 8 },
   subtitle:     { fontSize: 14, color: COLOURS.muted },
+  bioBtn: {
+    backgroundColor: COLOURS.primary, borderRadius: 14, padding: 18,
+    alignItems: "center", marginBottom: 20,
+  },
+  bioIcon:      { fontSize: 32, marginBottom: 6 },
+  bioBtnText:   { fontSize: 16, fontWeight: "700", color: COLOURS.white, marginBottom: 2 },
+  bioBtnSub:    { fontSize: 12, color: "rgba(255,255,255,0.6)" },
   card: {
     backgroundColor: COLOURS.white, borderRadius: 16, padding: 24,
     borderWidth: 1, borderColor: COLOURS.border, marginBottom: 16,
@@ -111,6 +215,7 @@ const styles = StyleSheet.create({
   showPin:      { paddingHorizontal: 12, paddingVertical: 14 },
   showPinText:  { color: COLOURS.accent, fontWeight: "600", fontSize: 13 },
   hint:         { fontSize: 11, color: COLOURS.muted, marginBottom: 8 },
-  loginBtn:     { marginBottom: 16 },
+  loginBtn:     { marginBottom: 12 },
+  disableBio:   { textAlign: "center", fontSize: 12, color: COLOURS.muted, marginBottom: 12, textDecorationLine: "underline" },
   footer:       { textAlign: "center", fontSize: 12, color: COLOURS.muted, lineHeight: 18 },
 });
