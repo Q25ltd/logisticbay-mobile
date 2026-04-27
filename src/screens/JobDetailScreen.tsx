@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { api } from "../api";
 import { COLOURS, Button, Card } from "../components";
+import { useShift } from "../ShiftContext";
 
 // Status flow and button labels
 const ACTIONS: Record<string, { label: string; next: string; colour: string; description: string } | null> = {
@@ -35,6 +36,7 @@ const STATUS_COLOURS: Record<string,{ bg: string; text: string }> = {
 };
 
 export default function JobDetailScreen({ navigation, route }: { navigation: any; route: any }) {
+  const viewOnly = route.params?.viewOnly ?? false;
   const { jobId } = route.params;
   const [job,         setJob]         = useState<any>(null);
   const [loading,     setLoading]     = useState(true);
@@ -227,7 +229,12 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
 
       {/* Action button */}
       <View style={styles.bottomNav}>
-        {action ? (
+        {viewOnly && action ? (
+          <TouchableOpacity style={styles.noShiftBar} onPress={() => navigation.navigate("StartShift")} activeOpacity={0.8}>
+            <Text style={styles.noShiftText}>🚛 Start a shift to update this job</Text>
+            <Text style={styles.noShiftSub}>Tap here to begin your shift →</Text>
+          </TouchableOpacity>
+        ) : action ? (
           <View>
             <Text style={{ fontSize: 11, color: COLOURS.muted, textAlign: "center", marginBottom: 6 }}>
               {action.description}
@@ -303,4 +310,7 @@ const styles = StyleSheet.create({
   bottomNav:       { padding: 16, backgroundColor: COLOURS.white, borderTopWidth: 1, borderTopColor: COLOURS.border },
   completedBar:    { backgroundColor: "#dcfce7", borderRadius: 10, padding: 16, alignItems: "center" },
   completedText:   { fontSize: 15, fontWeight: "700", color: "#14532d" },
+  noShiftBar:      { backgroundColor: "#fff7ed", borderRadius: 10, padding: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#f59e0b" },
+  noShiftText:     { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
+  noShiftSub:      { fontSize: 12, color: "#92400e", opacity: 0.7 },
 });

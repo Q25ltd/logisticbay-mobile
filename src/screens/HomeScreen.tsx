@@ -107,22 +107,35 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <Text style={styles.startBtnSub}>Begin your working day</Text>
         </TouchableOpacity>
 
-        {/* Jobs card — prominent if jobs assigned */}
-        <TouchableOpacity
-          style={[styles.jobsCard, activeJobs > 0 && styles.jobsCardActive]}
-          onPress={() => navigation.navigate("Jobs")}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.jobsTitle}>
-              {activeJobs > 0 ? `🔴 ${activeJobs} Active Job${activeJobs > 1 ? "s" : ""}` : `📋 Today's Jobs`}
-            </Text>
-            <Text style={styles.jobsSub}>
-              {jobs.length === 0
-                ? "No jobs assigned today"
-                : `${jobs.length} total · ${pendingJobs} pending · ${activeJobs} active`}
-            </Text>
+        {/* Jobs preview — whole card tappable */}
+        <TouchableOpacity style={styles.jobsPreview} onPress={() => navigation.navigate("Jobs")} activeOpacity={0.7}>
+          <View style={styles.jobsPreviewHeader}>
+            <Text style={styles.jobsPreviewTitle}>📋 Today's Jobs</Text>
+            <Text style={styles.jobsPreviewLink}>Manage →</Text>
           </View>
-          <Text style={styles.jobsArrow}>→</Text>
+          {jobs.length === 0 ? (
+            <Text style={styles.jobsPreviewEmpty}>No jobs assigned for today</Text>
+          ) : (
+            <>
+              <Text style={styles.jobsPreviewSummary}>
+                {jobs.length} job{jobs.length !== 1 ? "s" : ""} · {pendingJobs} pending · {activeJobs} active
+              </Text>
+              {jobs.slice(0, 2).map((j: any) => (
+                <View key={j.id} style={styles.jobPreviewRow}>
+                  <View style={[styles.jobPreviewDot, {
+                    backgroundColor: j.status === "completed" ? "#16a34a" :
+                                     j.status === "in_progress" ? "#f59e0b" : "#6b7280"
+                  }]} />
+                  <Text style={styles.jobPreviewText} numberOfLines={1}>
+                    {j.pickupTextSnapshot || "—"} → {j.dropoffTextSnapshot || "—"}
+                  </Text>
+                </View>
+              ))}
+              {jobs.length > 2 && (
+                <Text style={styles.jobsPreviewMore}>+{jobs.length - 2} more — tap Manage to see all</Text>
+              )}
+            </>
+          )}
         </TouchableOpacity>
 
         <View style={styles.grid}>
@@ -183,15 +196,19 @@ const styles = StyleSheet.create({
   startBtnText:     { fontSize: 20, fontWeight: "800", color: COLOURS.white, marginBottom: 4 },
   startBtnSub:      { fontSize: 13, color: "rgba(255,255,255,0.6)" },
 
-  jobsCard: {
+  jobsPreview: {
     backgroundColor: COLOURS.white, borderRadius: 12, padding: 16, marginBottom: 12,
-    flexDirection: "row", alignItems: "center",
     borderWidth: 1.5, borderColor: COLOURS.border,
   },
-  jobsCardActive:   { borderColor: COLOURS.fail, backgroundColor: "#fef2f2" },
-  jobsTitle:        { fontSize: 15, fontWeight: "700", color: COLOURS.primary, marginBottom: 2 },
-  jobsSub:          { fontSize: 12, color: COLOURS.muted },
-  jobsArrow:        { fontSize: 20, color: COLOURS.muted },
+  jobsPreviewHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  jobsPreviewTitle:   { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
+  jobsPreviewLink:    { fontSize: 13, fontWeight: "600", color: COLOURS.accent },
+  jobsPreviewEmpty:   { fontSize: 13, color: COLOURS.muted, fontStyle: "italic" },
+  jobsPreviewSummary: { fontSize: 12, color: COLOURS.muted, marginBottom: 8 },
+  jobPreviewRow:      { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 8 },
+  jobPreviewDot:      { width: 8, height: 8, borderRadius: 4 },
+  jobPreviewText:     { fontSize: 13, color: COLOURS.primary, flex: 1 },
+  jobsPreviewMore:    { fontSize: 11, color: COLOURS.muted, marginTop: 4, fontStyle: "italic" },
   grid:             { flexDirection: "row", gap: 12 },
   gridCard: {
     flex: 1, backgroundColor: COLOURS.white, borderRadius: 12, padding: 16,

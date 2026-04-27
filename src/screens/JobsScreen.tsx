@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, SafeAreaView,
-  TouchableOpacity, ActivityIndicator, RefreshControl, Alert,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
 import { COLOURS, Card } from "../components";
+import { useShift } from "../ShiftContext";
 
 interface Job {
   id:                  number;
@@ -41,16 +42,70 @@ function statusLabel(s: string) {
   return labels[s] || s;
 }
 
+function fmtDate(iso: string) {
+  const d = new Date(iso);
+  const today    = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  if (d.toDateString() === today.toDateString())    return "Today";
+  if (d.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function JobCard({ item, onPress, viewOnly }: { item: Job; onPress: () => void; viewOnly: boolean }) {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Card style={styles.jobCard}>
+        <View style={styles.jobHeader}>
+          <View style={[styles.statusDot, { backgroundColor: statusColour(item.status) }]} />
+          <Text style={[styles.statusText, { color: statusColour(item.status) }]}>
+            {statusLabel(item.status)}
+          </Text>
+          {viewOnly && (
+            <View style={styles.viewOnlyBadge}>
+              <Text style={styles.viewOnlyText}>VIEW ONLY</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.jobRoute}>{item.pickupTextSnapshot || "—"}</Text>
+        <Text style={styles.jobArrow}>↓</Text>
+        <Text style={styles.jobRoute}>{item.dropoffTextSnapshot || "—"}</Text>
+
+        <View style={styles.jobMeta}>
+          {item.referenceNumber ? <Text style={styles.metaItem}>📋 {item.referenceNumber}</Text> : null}
+          {item.materialType    ? <Text style={styles.metaItem}>📦 {item.materialType}</Text>    : null}
+          {item.quantityExpected ? <Text style={styles.metaItem}>⚖️ {item.quantityExpected} {item.quantityUnit}</Text> : null}
+        </View>
+
+        {item.plannerNotes ? (
+          <Text style={styles.jobNotes}>💬 {item.plannerNotes}</Text>
+        ) : null}
+
+        <Text style={styles.tapHint}>
+          {viewOnly ? "Start a shift to update job status" : "Tap to view details →"}
+        </Text>
+      </Card>
+    </TouchableOpacity>
+  );
+}
+
 export default function JobsScreen({ navigation }: { navigation: any }) {
-  const [jobs,    setJobs]    = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [todayJobs,    setTodayJobs]    = useState<Job[]>([]);
+  const [upcomingJobs, setUpcomingJobs] = useState<Job[]>([]);
+  const [tab,          setTab]          = useState<"today" | "upcoming">("today");
+  const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
+
+  const { draft, draftRestored } = useShift() as any;
+  const hasActiveShift = draftRestored && !!draft?.shiftId;
 
   async function load(refresh = false) {
     if (refresh) setRefreshing(true); else setLoading(true);
     try {
       const res = await api.get("/jobs/my");
-      setJobs(res.data.data);
+      setTodayJobs(res.data.data ?? []);
+      setUpcomingJobs(res.data.upcoming ?? []);
     } catch {}
     setLoading(false);
     setRefreshing(false);
@@ -58,7 +113,6 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
 
   useFocusEffect(useCallback(() => {
     load();
-    // Poll every 30 seconds
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, []));
@@ -69,9 +123,12 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
     </SafeAreaView>
   );
 
-  const pending   = jobs.filter(j => j.status === "pending"   || j.status === "accepted").length;
-  const active    = jobs.filter(j => j.status === "in_progress" || j.status === "arrived_pickup").length;
-  const completed = jobs.filter(j => j.status === "completed").length;
+  const jobs     = tab === "today" ? todayJobs : upcomingJobs;
+  const viewOnly = !hasActiveShift || tab === "upcoming";
+
+  const pending   = todayJobs.filter(j => j.status === "pending"   || j.status === "accepted").length;
+  const active    = todayJobs.filter(j => j.status === "in_progress" || j.status === "arrived_pickup").length;
+  const completed = todayJobs.filter(j => j.status === "completed").length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,37 +136,70 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Today's Jobs</Text>
+        <Text style={styles.topTitle}>My Jobs</Text>
         <View style={{ width: 60 }} />
       </View>
 
-      {/* Summary */}
-      <View style={styles.summary}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{jobs.length}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
+      {/* Shift status warning */}
+      {!hasActiveShift && (
+        <View style={styles.noShiftBanner}>
+          <Text style={styles.noShiftText}>
+            🚛 Start a shift to update job statuses
+          </Text>
         </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: COLOURS.accent }]}>{pending}</Text>
-          <Text style={styles.summaryLabel}>Pending</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: "#f59e0b" }]}>{active}</Text>
-          <Text style={styles.summaryLabel}>Active</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: COLOURS.pass }]}>{completed}</Text>
-          <Text style={styles.summaryLabel}>Done</Text>
-        </View>
+      )}
+
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, tab === "today" && styles.tabActive]}
+          onPress={() => setTab("today")}
+        >
+          <Text style={[styles.tabText, tab === "today" && styles.tabTextActive]}>
+            Today {todayJobs.length > 0 ? `(${todayJobs.length})` : ""}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === "upcoming" && styles.tabActive]}
+          onPress={() => setTab("upcoming")}
+        >
+          <Text style={[styles.tabText, tab === "upcoming" && styles.tabTextActive]}>
+            Upcoming {upcomingJobs.length > 0 ? `(${upcomingJobs.length})` : ""}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Today summary */}
+      {tab === "today" && todayJobs.length > 0 && (
+        <View style={styles.summary}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{todayJobs.length}</Text>
+            <Text style={styles.summaryLabel}>Total</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: COLOURS.accent }]}>{pending}</Text>
+            <Text style={styles.summaryLabel}>Pending</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: "#f59e0b" }]}>{active}</Text>
+            <Text style={styles.summaryLabel}>Active</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: COLOURS.pass }]}>{completed}</Text>
+            <Text style={styles.summaryLabel}>Done</Text>
+          </View>
+        </View>
+      )}
 
       {jobs.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyTitle}>No jobs today</Text>
+          <Text style={styles.emptyIcon}>{tab === "today" ? "📋" : "📅"}</Text>
+          <Text style={styles.emptyTitle}>
+            {tab === "today" ? "No jobs today" : "No upcoming jobs"}
+          </Text>
           <Text style={styles.emptySub}>Your planner will assign jobs here</Text>
         </View>
       ) : (
@@ -118,40 +208,31 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={{ padding: 16 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("JobDetail", { jobId: item.id })}
-              activeOpacity={0.7}
-            >
-              <Card style={styles.jobCard}>
-                <View style={styles.jobHeader}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColour(item.status) }]} />
-                  <Text style={[styles.statusText, { color: statusColour(item.status) }]}>
-                    {statusLabel(item.status)}
-                  </Text>
-                </View>
-
-                <Text style={styles.jobRoute}>
-                  {item.pickupTextSnapshot || "—"}
-                </Text>
-                <Text style={styles.jobArrow}>↓</Text>
-                <Text style={styles.jobRoute}>
-                  {item.dropoffTextSnapshot || "—"}
-                </Text>
-
-                <View style={styles.jobMeta}>
-                  {item.referenceNumber ? <Text style={styles.metaItem}>📋 {item.referenceNumber}</Text> : null}
-                  {item.materialType    ? <Text style={styles.metaItem}>📦 {item.materialType}</Text>    : null}
-                </View>
-
-                {item.plannerNotes ? (
-                  <Text style={styles.jobNotes}>💬 {item.plannerNotes}</Text>
-                ) : null}
-
-                <Text style={styles.tapHint}>Tap to view details →</Text>
-              </Card>
-            </TouchableOpacity>
-          )}
+          ListHeaderComponent={tab === "upcoming" ? (
+            <View style={styles.upcomingNote}>
+              <Text style={styles.upcomingNoteText}>
+                📅 Plan your week — these jobs are assigned to you for upcoming days
+              </Text>
+            </View>
+          ) : null}
+          renderItem={({ item }) => {
+            const isUpcoming = tab === "upcoming";
+            return (
+              <>
+                {isUpcoming && (
+                  <Text style={styles.dateHeader}>{fmtDate(item.plannedDate)}</Text>
+                )}
+                <JobCard
+                  item={item}
+                  viewOnly={viewOnly}
+                  onPress={() => navigation.navigate("JobDetail", {
+                    jobId: item.id,
+                    viewOnly,
+                  })}
+                />
+              </>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -168,6 +249,22 @@ const styles = StyleSheet.create({
   },
   backText:       { color: COLOURS.accent, fontSize: 15, fontWeight: "600" },
   topTitle:       { fontSize: 17, fontWeight: "700", color: COLOURS.primary },
+  noShiftBanner: {
+    backgroundColor: "#fff7ed", borderLeftWidth: 4, borderLeftColor: COLOURS.warning,
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  noShiftText:    { fontSize: 13, color: "#92400e", fontWeight: "600" },
+  tabs: {
+    flexDirection: "row", backgroundColor: COLOURS.white,
+    borderBottomWidth: 1, borderBottomColor: COLOURS.border,
+  },
+  tab: {
+    flex: 1, paddingVertical: 12, alignItems: "center",
+    borderBottomWidth: 2, borderBottomColor: "transparent",
+  },
+  tabActive:      { borderBottomColor: COLOURS.primary },
+  tabText:        { fontSize: 14, fontWeight: "600", color: COLOURS.muted },
+  tabTextActive:  { color: COLOURS.primary },
   summary: {
     flexDirection: "row", backgroundColor: COLOURS.primary,
     margin: 16, borderRadius: 12, padding: 16,
@@ -179,10 +276,18 @@ const styles = StyleSheet.create({
   emptyIcon:      { fontSize: 48, marginBottom: 12 },
   emptyTitle:     { fontSize: 18, fontWeight: "700", color: COLOURS.primary, marginBottom: 4 },
   emptySub:       { fontSize: 13, color: COLOURS.muted },
+  upcomingNote: {
+    backgroundColor: "#eff6ff", borderRadius: 8, padding: 12, marginBottom: 12,
+    borderLeftWidth: 3, borderLeftColor: "#3b82f6",
+  },
+  upcomingNoteText: { fontSize: 13, color: "#1e40af" },
+  dateHeader:     { fontSize: 12, fontWeight: "700", color: COLOURS.muted, textTransform: "uppercase", marginBottom: 6, marginTop: 4 },
   jobCard:        { marginBottom: 12 },
   jobHeader:      { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   statusDot:      { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusText:     { fontSize: 12, fontWeight: "700", textTransform: "uppercase" },
+  viewOnlyBadge:  { marginLeft: "auto", backgroundColor: "#f3f4f6", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  viewOnlyText:   { fontSize: 9, fontWeight: "700", color: COLOURS.muted },
   jobRoute:       { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
   jobArrow:       { fontSize: 16, color: COLOURS.muted, marginVertical: 2, marginLeft: 4 },
   jobMeta:        { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
