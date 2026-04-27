@@ -49,7 +49,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello, {user?.name?.split(" ")[0] ?? "Driver"} 👋</Text>
-          <Text style={styles.company}>{user?.companyName ?? ""}</Text>
+          <Text style={styles.company}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
         </View>
         <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Sign out</Text>
