@@ -7,47 +7,77 @@ import { api } from "../api";
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 
-// Status flow and button labels
-const ACTIONS: Record<string, { label: string; next: string; colour: string; description: string } | null> = {
-  pending:        { label: "▶  Start Job",           next: "in_progress",    colour: COLOURS.accent,  description: "Tap when leaving for pickup" },
-  accepted:       { label: "▶  Start Job",           next: "in_progress",    colour: COLOURS.accent,  description: "Tap when leaving for pickup" },
-  in_progress:    { label: "📍 Arrived at Pickup",   next: "arrived_pickup", colour: "#f59e0b",       description: "Tap when you arrive at the collection point" },
-  arrived_pickup: { label: "✅ Collected — Complete", next: "completed",      colour: COLOURS.pass,    description: "Tap when load is collected and job is done" },
-  completed:      null,
-  cancelled:      null,
-};
-
 const STATUS_LABELS: Record<string,string> = {
-  pending:        "Pending",
-  accepted:       "Accepted",
-  in_progress:    "In Progress",
-  arrived_pickup: "At Pickup",
-  completed:      "Completed",
-  cancelled:      "Cancelled",
+  pending:         "Pending",
+  accepted:        "Accepted",
+  in_progress:     "En Route to Pickup",
+  arrived_pickup:  "At Pickup",
+  collected:       "Load Collected",
+  arrived_dropoff: "At Dropoff",
+  completed:       "Delivered ✅",
+  cancelled:       "Cancelled",
 };
 
 const STATUS_COLOURS: Record<string,{ bg: string; text: string }> = {
-  pending:        { bg: "#dbeafe", text: "#1e40af" },
-  accepted:       { bg: "#dbeafe", text: "#1e40af" },
-  in_progress:    { bg: "#fef9c3", text: "#713f12" },
-  arrived_pickup: { bg: "#e0e7ff", text: "#3730a3" },
-  completed:      { bg: "#dcfce7", text: "#14532d" },
-  cancelled:      { bg: "#f3f4f6", text: "#6b7280" },
+  pending:         { bg: "#dbeafe", text: "#1e40af" },
+  accepted:        { bg: "#dbeafe", text: "#1e40af" },
+  in_progress:     { bg: "#fef9c3", text: "#713f12" },
+  arrived_pickup:  { bg: "#e0e7ff", text: "#3730a3" },
+  collected:       { bg: "#fef3c7", text: "#92400e" },
+  arrived_dropoff: { bg: "#f3e8ff", text: "#6b21a8" },
+  completed:       { bg: "#dcfce7", text: "#14532d" },
+  cancelled:       { bg: "#f3f4f6", text: "#6b7280" },
+};
+
+interface ActionStep {
+  label:       string;
+  next:        string;
+  colour:      string;
+  description: string;
+  needsForm?:  "collect" | "deliver";
+}
+
+const ACTIONS: Record<string, ActionStep | null> = {
+  pending:         { label: "▶ Start Job — Leave for Pickup", next: "in_progress",    colour: COLOURS.accent,  description: "Tap when you leave for the collection point" },
+  accepted:        { label: "▶ Start Job — Leave for Pickup", next: "in_progress",    colour: COLOURS.accent,  description: "Tap when you leave for the collection point" },
+  in_progress:     { label: "📍 Arrived at Pickup",           next: "arrived_pickup", colour: "#8b5cf6",       description: "Tap when you arrive at the collection point" },
+  arrived_pickup:  { label: "📦 Confirm Collection",          next: "collected",      colour: "#f59e0b",       description: "Enter actual quantities collected",           needsForm: "collect" },
+  collected:       { label: "🚛 Arrived at Dropoff",          next: "arrived_dropoff",colour: "#6366f1",       description: "Tap when you arrive at the delivery point" },
+  arrived_dropoff: { label: "✅ Confirm Delivery",            next: "completed",      colour: COLOURS.pass,    description: "Enter POD and actual quantities delivered",   needsForm: "deliver" },
+  completed:       null,
+  cancelled:       null,
 };
 
 export default function JobDetailScreen({ navigation, route }: { navigation: any; route: any }) {
-  const viewOnly = route.params?.viewOnly ?? false;
   const { jobId } = route.params;
-  const [job,         setJob]         = useState<any>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [saving,      setSaving]      = useState(false);
-  const [note,        setNote]        = useState("");
-  const [showNoteBox, setShowNoteBox] = useState(false);
+  const { draft, draftRestored } = useShift() as any;
+  const hasActiveShift = draftRestored && !!draft?.shiftId;
+  const viewOnly = !hasActiveShift;
+
+  const [job,          setJob]          = useState<any>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
+  const [note,         setNote]         = useState("");
+  const [showNoteBox,  setShowNoteBox]  = useState(false);
+  const [showForm,     setShowForm]     = useState(false);
+
+  // Collection form
+  const [actualQty,    setActualQty]    = useState("");
+  const [actualUnit,   setActualUnit]   = useState("pallets");
+  const [collectNote,  setCollectNote]  = useState("");
+
+  // Delivery form
+  const [podNumber,    setPodNumber]    = useState("");
+  const [deliveryNote, setDeliveryNote] = useState("");
+  const [deliveredQty, setDeliveredQty] = useState("");
 
   async function load() {
     try {
       const res = await api.get(`/jobs/${jobId}`);
       setJob(res.data);
+      // Pre-fill delivery qty from collected qty
+      if (res.data.actualQuantity) setDeliveredQty(res.data.actualQuantity);
+      if (res.data.actualUnit)     setActualUnit(res.data.actualUnit);
     } catch {
       Alert.alert("Error", "Could not load job details");
       navigation.goBack();
@@ -61,26 +91,53 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
     const action = ACTIONS[job.status];
     if (!action) return;
 
+    if (action.needsForm) {
+      setShowForm(true);
+      return;
+    }
+
     Alert.alert(
       action.label,
-      `Confirm: ${action.label.replace("→","").replace("✓","").trim()}?`,
+      action.description,
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            setSaving(true);
-            try {
-              await api.patch(`/jobs/${jobId}/status`, { status: action.next });
-              await load();
-            } catch (err: any) {
-              Alert.alert("Error", err.response?.data?.error ?? "Failed to update");
-            }
-            setSaving(false);
-          },
-        },
+        { text: "Confirm", onPress: () => doStatusUpdate(action.next, {}) },
       ]
     );
+  }
+
+  async function handleCollect() {
+    if (!actualQty.trim()) {
+      Alert.alert("Required", "Please enter actual quantity collected");
+      return;
+    }
+    await doStatusUpdate("collected", {
+      actualQuantity: actualQty,
+      actualUnit,
+      collectionNote: collectNote,
+    });
+    setShowForm(false);
+  }
+
+  async function handleDeliver() {
+    await doStatusUpdate("completed", {
+      podNumber,
+      deliveryNote,
+      actualQuantity: deliveredQty || job.actualQuantity,
+      actualUnit:     actualUnit   || job.actualUnit,
+    });
+    setShowForm(false);
+  }
+
+  async function doStatusUpdate(status: string, extra: any) {
+    setSaving(true);
+    try {
+      await api.patch(`/jobs/${jobId}/status`, { status, ...extra });
+      await load();
+    } catch (err: any) {
+      Alert.alert("Error", err.response?.data?.error ?? "Failed to update");
+    }
+    setSaving(false);
   }
 
   async function handleAddNote() {
@@ -109,6 +166,124 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   const action      = ACTIONS[job.status];
   const statusStyle = STATUS_COLOURS[job.status] ?? STATUS_COLOURS.pending;
 
+  // Collection form modal
+  if (showForm && action?.needsForm === "collect") {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setShowForm(false)}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>Confirm Collection</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+          <Card>
+            <Text style={styles.formInfo}>
+              📋 Planner expected: <Text style={styles.bold}>{job.quantityExpected || "not specified"} {job.quantityUnit}</Text>
+            </Text>
+            <Text style={styles.sectionLabel}>Actual Quantity Collected</Text>
+            <TextInput
+              style={styles.input}
+              value={actualQty}
+              onChangeText={setActualQty}
+              placeholder="e.g. 4"
+              keyboardType="decimal-pad"
+              placeholderTextColor={COLOURS.muted}
+            />
+            <Text style={styles.sectionLabel}>Unit of measurement</Text>
+            <View style={styles.unitRow}>
+              {["pallets", "kgs", "bags", "other"].map(u => (
+                <TouchableOpacity
+                  key={u}
+                  style={[styles.unitBtn, actualUnit === u && styles.unitBtnActive]}
+                  onPress={() => setActualUnit(u)}
+                >
+                  <Text style={[styles.unitBtnText, actualUnit === u && styles.unitBtnTextActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.sectionLabel}>Collection Note <Text style={styles.optional}>(optional)</Text></Text>
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={collectNote}
+              onChangeText={setCollectNote}
+              placeholder="e.g. 1 pallet damaged, refused by depot..."
+              placeholderTextColor={COLOURS.muted}
+              multiline
+            />
+          </Card>
+        </ScrollView>
+        <View style={styles.bottomNav}>
+          <Button
+            label={saving ? "Saving..." : "✅ Confirm Collection"}
+            onPress={handleCollect}
+            loading={saving}
+            style={{ backgroundColor: "#f59e0b" }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Delivery form modal
+  if (showForm && action?.needsForm === "deliver") {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setShowForm(false)}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>Confirm Delivery</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+          <Card>
+            {job.actualQuantity ? (
+              <Text style={styles.formInfo}>
+                📦 Collected: <Text style={styles.bold}>{job.actualQuantity} {job.actualUnit}</Text>
+              </Text>
+            ) : null}
+            <Text style={styles.sectionLabel}>Actual Quantity Delivered</Text>
+            <TextInput
+              style={styles.input}
+              value={deliveredQty}
+              onChangeText={setDeliveredQty}
+              placeholder="e.g. 4"
+              keyboardType="decimal-pad"
+              placeholderTextColor={COLOURS.muted}
+            />
+            <Text style={styles.sectionLabel}>POD / Delivery Reference <Text style={styles.optional}>(optional)</Text></Text>
+            <TextInput
+              style={styles.input}
+              value={podNumber}
+              onChangeText={setPodNumber}
+              placeholder="e.g. POD-12345"
+              placeholderTextColor={COLOURS.muted}
+            />
+            <Text style={styles.sectionLabel}>Delivery Note <Text style={styles.optional}>(optional)</Text></Text>
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={deliveryNote}
+              onChangeText={setDeliveryNote}
+              placeholder="e.g. left at reception, customer signed, short delivered 1..."
+              placeholderTextColor={COLOURS.muted}
+              multiline
+            />
+          </Card>
+        </ScrollView>
+        <View style={styles.bottomNav}>
+          <Button
+            label={saving ? "Saving..." : "✅ Confirm Delivery"}
+            onPress={handleDeliver}
+            loading={saving}
+            style={{ backgroundColor: COLOURS.pass }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
@@ -125,7 +300,29 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
 
       <ScrollView style={styles.scroll} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
 
-        {/* Route — read only, set by planner */}
+        {/* Progress bar */}
+        <View style={styles.progressBar}>
+          {["in_progress","arrived_pickup","collected","arrived_dropoff","completed"].map((s, i) => {
+            const statuses = ["in_progress","arrived_pickup","collected","arrived_dropoff","completed"];
+            const current  = statuses.indexOf(job.status);
+            const done     = i <= current;
+            return (
+              <React.Fragment key={s}>
+                <View style={[styles.progressDot, done && styles.progressDotDone]} />
+                {i < statuses.length - 1 && (
+                  <View style={[styles.progressLine, done && i < current && styles.progressLineDone]} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </View>
+        <View style={styles.progressLabels}>
+          {["Pickup", "At Pickup", "Collected", "At Drop", "Done"].map((l, i) => (
+            <Text key={l} style={styles.progressLabel}>{l}</Text>
+          ))}
+        </View>
+
+        {/* Route */}
         <Card style={{ marginBottom: 12 }}>
           <Text style={styles.sectionLabel}>Route</Text>
           <View style={styles.routeRow}>
@@ -137,7 +334,7 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
           </View>
           <View style={styles.routeConnector} />
           <View style={styles.routeRow}>
-            <View style={[styles.routeDot, { backgroundColor: COLOURS.fail }]} />
+            <View style={[styles.routeDot, { backgroundColor: COLOURS.pass }]} />
             <View style={{ flex: 1 }}>
               <Text style={styles.routeLabel}>DROPOFF</Text>
               <Text style={styles.routeText}>{job.dropoffTextSnapshot || "—"}</Text>
@@ -145,21 +342,47 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
           </View>
         </Card>
 
-        {/* Job details — read only */}
-        {(job.referenceNumber || job.materialType || job.quantityExpected || job.plannerNotes) && (
-          <Card style={{ marginBottom: 12 }}>
-            <Text style={styles.sectionLabel}>Job Details</Text>
-            {job.referenceNumber  ? <Text style={styles.detailRow}>📋 <Text style={styles.bold}>{job.referenceNumber}</Text></Text>  : null}
-            {job.materialType     ? <Text style={styles.detailRow}>📦 {job.materialType}{job.quantityExpected ? ` — ${job.quantityExpected} ${job.quantityUnit}` : ""}</Text> : null}
-            {job.plannerNotes     ? (
-              <View style={styles.plannerNote}>
-                <Text style={styles.plannerNoteLabel}>📌 Planner Notes</Text>
-                <Text style={styles.plannerNoteText}>{job.plannerNotes}</Text>
-              </View>
-            ) : null}
-            <Text style={styles.readOnlyNote}>ℹ️ These details are set by your planner and cannot be edited</Text>
-          </Card>
-        )}
+        {/* Job details */}
+        <Card style={{ marginBottom: 12 }}>
+          <Text style={styles.sectionLabel}>Job Details</Text>
+          {job.referenceNumber ? <Text style={styles.detailRow}>📋 <Text style={styles.bold}>{job.referenceNumber}</Text></Text> : null}
+          {job.materialType ? (
+            <View style={styles.qtyRow}>
+              <Text style={styles.detailRow}>📦 {job.materialType}</Text>
+              {job.quantityExpected ? (
+                <View style={styles.qtyBadge}>
+                  <Text style={styles.qtyLabel}>PLANNED</Text>
+                  <Text style={styles.qtyValue}>{job.quantityExpected} {job.quantityUnit}</Text>
+                </View>
+              ) : null}
+              {job.actualQuantity ? (
+                <View style={[styles.qtyBadge, { backgroundColor: "#dcfce7" }]}>
+                  <Text style={[styles.qtyLabel, { color: "#14532d" }]}>ACTUAL</Text>
+                  <Text style={[styles.qtyValue, { color: "#14532d" }]}>{job.actualQuantity} {job.actualUnit}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {job.podNumber ? <Text style={styles.detailRow}>🧾 POD: <Text style={styles.bold}>{job.podNumber}</Text></Text> : null}
+          {job.plannerNotes ? (
+            <View style={styles.plannerNote}>
+              <Text style={styles.plannerNoteLabel}>📌 Planner Notes</Text>
+              <Text style={styles.plannerNoteText}>{job.plannerNotes}</Text>
+            </View>
+          ) : null}
+          {job.collectionNote ? (
+            <View style={[styles.plannerNote, { backgroundColor: "#fef9c3" }]}>
+              <Text style={[styles.plannerNoteLabel, { color: "#713f12" }]}>📦 Collection Note</Text>
+              <Text style={[styles.plannerNoteText, { color: "#713f12" }]}>{job.collectionNote}</Text>
+            </View>
+          ) : null}
+          {job.deliveryNote ? (
+            <View style={[styles.plannerNote, { backgroundColor: "#dcfce7" }]}>
+              <Text style={[styles.plannerNoteLabel, { color: "#14532d" }]}>🚚 Delivery Note</Text>
+              <Text style={[styles.plannerNoteText, { color: "#14532d" }]}>{job.deliveryNote}</Text>
+            </View>
+          ) : null}
+        </Card>
 
         {/* Activity log */}
         {job.events?.length > 0 && (
@@ -170,10 +393,12 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
                 <View style={styles.eventDotSmall} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.eventType}>
-                    {e.eventType === "started"        ? "▶ Job started" :
-                     e.eventType === "arrived_pickup" ? "📍 Arrived at pickup" :
-                     e.eventType === "completed"      ? "✅ Job completed" :
-                     e.eventType === "note_added"     ? "💬 Note added" :
+                    {e.eventType === "started"         ? "▶ Left for pickup" :
+                     e.eventType === "arrived_pickup"  ? "📍 Arrived at pickup" :
+                     e.eventType === "collected"       ? "📦 Load collected" :
+                     e.eventType === "arrived_dropoff" ? "📍 Arrived at dropoff" :
+                     e.eventType === "completed"       ? "✅ Delivered" :
+                     e.eventType === "note_added"      ? "💬 Note added" :
                      e.eventType}
                   </Text>
                   {e.note ? <Text style={styles.eventNote}>"{e.note}"</Text> : null}
@@ -187,7 +412,7 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
         )}
 
         {/* Add note */}
-        {job.status !== "cancelled" && (
+        {job.status !== "cancelled" && job.status !== "completed" && (
           <Card style={{ marginBottom: 12 }}>
             <Text style={styles.sectionLabel}>Report a Problem or Add Note</Text>
             {!showNoteBox ? (
@@ -197,26 +422,19 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
             ) : (
               <>
                 <TextInput
-                  style={styles.noteInput}
+                  style={[styles.input, styles.multiline] as any}
                   value={note}
                   onChangeText={setNote}
-                  placeholder="e.g. Site closed, access issue, delivery refused, damage found..."
+                  placeholder="e.g. Site closed, access issue, refused..."
                   placeholderTextColor={COLOURS.muted}
                   multiline
                   autoFocus
                 />
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                  <TouchableOpacity
-                    style={[styles.noteSubmitBtn, { flex: 1 }]}
-                    onPress={handleAddNote}
-                    disabled={saving}
-                  >
+                  <TouchableOpacity style={[styles.noteSubmitBtn, { flex: 1 }]} onPress={handleAddNote} disabled={saving}>
                     <Text style={styles.noteSubmitText}>{saving ? "Sending..." : "Send Note →"}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.noteCancelBtn, { flex: 1 }]}
-                    onPress={() => { setShowNoteBox(false); setNote(""); }}
-                  >
+                  <TouchableOpacity style={[styles.noteCancelBtn, { flex: 1 }]} onPress={() => { setShowNoteBox(false); setNote(""); }}>
                     <Text style={styles.noteCancelText}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
@@ -224,10 +442,8 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
             )}
           </Card>
         )}
-
       </ScrollView>
 
-      {/* Action button */}
       <View style={styles.bottomNav}>
         {viewOnly && action ? (
           <TouchableOpacity style={styles.noShiftBar} onPress={() => navigation.navigate("StartShift")} activeOpacity={0.8}>
@@ -248,7 +464,7 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
           </View>
         ) : job.status === "completed" ? (
           <View style={styles.completedBar}>
-            <Text style={styles.completedText}>✅ Job Completed — well done!</Text>
+            <Text style={styles.completedText}>✅ Job Delivered — well done!</Text>
           </View>
         ) : job.status === "cancelled" ? (
           <View style={[styles.completedBar, { backgroundColor: "#f3f4f6" }]}>
@@ -273,6 +489,13 @@ const styles = StyleSheet.create({
   statusBadge:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText:      { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
   scroll:          { flex: 1 },
+  progressBar:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 16 },
+  progressDot:     { width: 12, height: 12, borderRadius: 6, backgroundColor: COLOURS.border },
+  progressDotDone: { backgroundColor: COLOURS.primary },
+  progressLine:    { flex: 1, height: 2, backgroundColor: COLOURS.border },
+  progressLineDone:{ backgroundColor: COLOURS.primary },
+  progressLabels:  { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, marginTop: 4, marginBottom: 12 },
+  progressLabel:   { fontSize: 9, color: COLOURS.muted, textAlign: "center", flex: 1 },
   sectionLabel:    { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   routeRow:        { flexDirection: "row", alignItems: "flex-start", gap: 12, marginVertical: 4 },
   routeDot:        { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
@@ -281,28 +504,22 @@ const styles = StyleSheet.create({
   routeText:       { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
   detailRow:       { fontSize: 14, color: COLOURS.primary, marginBottom: 8 },
   bold:            { fontWeight: "700" },
-  plannerNote: {
-    backgroundColor: "#eff6ff", borderRadius: 8, padding: 12,
-    marginTop: 4, marginBottom: 8,
-  },
+  qtyRow:          { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  qtyBadge:        { backgroundColor: "#dbeafe", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  qtyLabel:        { fontSize: 8, color: "#1e40af", textTransform: "uppercase", fontWeight: "700" },
+  qtyValue:        { fontSize: 13, color: "#1e40af", fontWeight: "700" },
+  plannerNote:     { backgroundColor: "#eff6ff", borderRadius: 8, padding: 12, marginTop: 4, marginBottom: 8 },
   plannerNoteLabel:{ fontSize: 11, fontWeight: "700", color: "#1e40af", marginBottom: 4 },
   plannerNoteText: { fontSize: 13, color: "#1e40af", lineHeight: 18 },
-  readOnlyNote:    { fontSize: 11, color: COLOURS.muted, fontStyle: "italic", marginTop: 4 },
   eventRow:        { flexDirection: "row", gap: 10, marginBottom: 12 },
   eventDotSmall:   { width: 8, height: 8, borderRadius: 4, backgroundColor: COLOURS.accent, marginTop: 5 },
   eventType:       { fontSize: 13, fontWeight: "600", color: COLOURS.primary },
   eventNote:       { fontSize: 12, color: COLOURS.muted, marginTop: 2, fontStyle: "italic" },
   eventTime:       { fontSize: 11, color: COLOURS.muted, marginTop: 2 },
-  addNoteBtn: {
-    borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 8,
-    padding: 12, alignItems: "center", borderStyle: "dashed",
-  },
+  addNoteBtn:      { borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 8, padding: 12, alignItems: "center", borderStyle: "dashed" },
   addNoteBtnText:  { fontSize: 13, fontWeight: "600", color: COLOURS.muted },
-  noteInput: {
-    borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 8,
-    padding: 12, fontSize: 14, color: COLOURS.primary,
-    minHeight: 80,
-  } as any,
+  input:           { borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 8, padding: 12, fontSize: 14, color: COLOURS.primary, marginBottom: 8, backgroundColor: COLOURS.white },
+  multiline:       { minHeight: 80, textAlignVertical: "top" } as any,
   noteSubmitBtn:   { backgroundColor: COLOURS.primary, borderRadius: 8, padding: 12, alignItems: "center" },
   noteSubmitText:  { color: COLOURS.white, fontWeight: "700", fontSize: 13 },
   noteCancelBtn:   { backgroundColor: COLOURS.background, borderRadius: 8, padding: 12, alignItems: "center", borderWidth: 1, borderColor: COLOURS.border },
@@ -313,4 +530,11 @@ const styles = StyleSheet.create({
   noShiftBar:      { backgroundColor: "#fff7ed", borderRadius: 10, padding: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#f59e0b" },
   noShiftText:     { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
   noShiftSub:      { fontSize: 12, color: "#92400e", opacity: 0.7 },
+  formInfo:        { fontSize: 14, color: COLOURS.primary, marginBottom: 12, padding: 10, backgroundColor: COLOURS.background, borderRadius: 8 },
+  unitRow:         { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
+  unitBtn:         { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: COLOURS.border, backgroundColor: COLOURS.white },
+  unitBtnActive:   { backgroundColor: COLOURS.primary, borderColor: COLOURS.primary },
+  unitBtnText:     { fontSize: 12, fontWeight: "600", color: COLOURS.muted },
+  unitBtnTextActive:{ color: COLOURS.white },
+  optional:        { fontWeight: "400", color: COLOURS.muted },
 });
