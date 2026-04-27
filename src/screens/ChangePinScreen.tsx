@@ -15,6 +15,7 @@ interface Props {
 
 export default function ChangePinScreen({ navigation, route }: Props) {
   const forced = route?.params?.forced ?? false;
+  const { clearMustChangePin } = useAuth();
 
   const [currentPin, setCurrentPin] = useState("");
   const [newPin,     setNewPin]     = useState("");
@@ -46,7 +47,7 @@ export default function ChangePinScreen({ navigation, route }: Props) {
         "PIN Changed ✓",
         "Your PIN has been updated successfully.",
         [{ text: "OK", onPress: () => {
-          setMustChangePinDone();
+          clearMustChangePin();
           navigation.reset({ index: 0, routes: [{ name: "Home" }] });
         }}]
       );

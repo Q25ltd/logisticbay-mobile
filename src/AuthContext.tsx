@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api, saveTokens, clearTokens, getAccessToken } from "./api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
   id:        number;
@@ -53,7 +54,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     await clearTokens();
+    await AsyncStorage.removeItem("shiftDraft");
     setUser(null);
+    setMustChangePin(false);
   }
 
   return (

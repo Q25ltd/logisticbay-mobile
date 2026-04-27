@@ -5,7 +5,7 @@ import * as SecureStore from "expo-secure-store";
 // Config — update this to your Mac's IP when on a different network
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.0.45:3000";
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://api-production-cdc9.up.railway.app";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Token storage
