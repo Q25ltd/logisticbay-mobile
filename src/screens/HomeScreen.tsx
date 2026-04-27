@@ -158,6 +158,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.gridSub}>Update your 6-digit PIN</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Company brand banner */}
+        <View style={styles.companyBanner}>
+          <Text style={styles.companyBannerLabel}>POWERED BY</Text>
+          <Text
+            style={styles.companyBannerName}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+          >
+            {user?.companyName ?? "LogisticBay"}
+          </Text>
+          <Text style={styles.companyBannerSub}>logistics · transport · delivery</Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -219,4 +233,11 @@ const styles = StyleSheet.create({
   gridIcon:         { fontSize: 28, marginBottom: 6 },
   gridLabel:        { fontSize: 14, fontWeight: "700", color: COLOURS.primary, marginBottom: 2 },
   gridSub:          { fontSize: 11, color: COLOURS.muted },
+  companyBanner: {
+    marginTop: 20, marginHorizontal: 0, paddingVertical: 24, paddingHorizontal: 20,
+    backgroundColor: COLOURS.primary, borderRadius: 16, alignItems: "center",
+  },
+  companyBannerLabel: { fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 },
+  companyBannerName:  { fontSize: 36, fontWeight: "900", color: COLOURS.white, textAlign: "center", lineHeight: 40 },
+  companyBannerSub:   { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6, letterSpacing: 1 },
 });
