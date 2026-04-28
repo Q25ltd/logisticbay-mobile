@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, View } from "react-native";
 
 import { AuthProvider, useAuth } from "./src/AuthContext";
-import { ShiftProvider }         from "./src/ShiftContext";
+import { ShiftProvider, useShift } from "./src/ShiftContext";
 
 import LoginScreen          from "./src/screens/LoginScreen";
 import HomeScreen           from "./src/screens/HomeScreen";
@@ -28,6 +28,23 @@ import {
 import { COLOURS } from "./src/components";
 
 const Stack = createNativeStackNavigator();
+
+function InitialScreen({ navigation }: { navigation: any }) {
+  const { draft, draftRestored } = useShift() as any;
+  useEffect(() => {
+    if (!draftRestored) return;
+    if (draft?.shiftId) {
+      navigation.replace("Jobs");
+    } else {
+      navigation.replace("Home");
+    }
+  }, [draftRestored]);
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: COLOURS.primary }}>
+      <ActivityIndicator size="large" color="#fff" />
+    </View>
+  );
+}
 
 function AppNavigator() {
   const { user, loading } = useAuth();
