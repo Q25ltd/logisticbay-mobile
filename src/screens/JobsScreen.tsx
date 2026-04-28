@@ -133,11 +133,13 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Home")}>
+          <Text style={styles.backText}>← Home</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>My Jobs</Text>
-        <View style={{ width: 60 }} />
+        <TouchableOpacity onPress={() => navigation.navigate("EndShift")}>
+          <Text style={styles.endShiftText}>End Shift</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Shift status warning */}
@@ -248,6 +250,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: COLOURS.border,
   },
   backText:       { color: COLOURS.accent, fontSize: 15, fontWeight: "600" },
+  endShiftText:   { color: COLOURS.fail, fontSize: 14, fontWeight: "700" },
   topTitle:       { fontSize: 17, fontWeight: "700", color: COLOURS.primary },
   noShiftBanner: {
     backgroundColor: "#fff7ed", borderLeftWidth: 4, borderLeftColor: COLOURS.warning,

@@ -312,7 +312,7 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Jobs")}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>Job Details</Text>
@@ -528,8 +528,16 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
             />
           </View>
         ) : job.status === "completed" ? (
-          <View style={styles.completedBar}>
-            <Text style={styles.completedText}>✅ Job Delivered — well done!</Text>
+          <View>
+            <View style={styles.completedBar}>
+              <Text style={styles.completedText}>✅ Job Delivered — well done!</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.endShiftBtn}
+              onPress={() => navigation.navigate("EndShift")}
+            >
+              <Text style={styles.endShiftBtnText}>🏁 Finished for the day? End Shift →</Text>
+            </TouchableOpacity>
           </View>
         ) : job.status === "cancelled" ? (
           <View style={[styles.completedBar, { backgroundColor: "#f3f4f6" }]}>
@@ -595,6 +603,8 @@ const styles = StyleSheet.create({
   noShiftBar:      { backgroundColor: "#fff7ed", borderRadius: 10, padding: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#f59e0b" },
   noShiftText:     { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
   noShiftSub:      { fontSize: 12, color: "#92400e", opacity: 0.7 },
+  endShiftBtn:     { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
+  endShiftBtnText: { fontSize: 14, fontWeight: "700", color: COLOURS.white },
   formInfo:        { fontSize: 14, color: COLOURS.primary, marginBottom: 12, padding: 10, backgroundColor: COLOURS.background, borderRadius: 8 },
   vehicleRow:      { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
   vehicleIcon:     { fontSize: 24 },
