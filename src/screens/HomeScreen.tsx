@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
   jobPreviewDot:      { width: 8, height: 8, borderRadius: 4 },
   jobPreviewText:     { fontSize: 13, color: COLOURS.primary, flex: 1 },
   jobsPreviewMore:    { fontSize: 11, color: COLOURS.muted, marginTop: 4, fontStyle: "italic" },
-  grid:             { flexDirection: "row", gap: 12 },
-  gridCard: {
+  grid:             { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  gridCard: { width: "30%",
     flex: 1, backgroundColor: COLOURS.white, borderRadius: 12, padding: 16,
     alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
