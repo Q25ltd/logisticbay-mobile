@@ -18,6 +18,7 @@ import DeliveriesScreen     from "./src/screens/DeliveriesScreen";
 import EndSegmentScreen     from "./src/screens/EndSegmentScreen";
 
 import { StartShiftScreen as NewStartShiftScreen } from "./src/screens/StartShiftScreen";
+import { HolidayScreen } from "./src/screens/HolidayScreen";
 import {
   StartShiftScreen as OldStartShiftScreen,
   EndShiftScreen,
@@ -59,6 +60,7 @@ function AppNavigator() {
             <Stack.Screen name="ShiftDetail"     component={ShiftDetailScreen} />
             <Stack.Screen name="Jobs"            component={JobsScreen} />
             <Stack.Screen name="JobDetail"       component={JobDetailScreen} />
+            <Stack.Screen name="Holidays"        component={HolidayScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

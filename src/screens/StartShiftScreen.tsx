@@ -8,6 +8,15 @@ import { api } from "../api";
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 
+function formatTimeInput(t: string): string {
+  const clean = t.replace(/[^0-9]/g, "");
+  if (clean.length >= 4) return `${clean.slice(0,2)}:${clean.slice(2,4)}`;
+  return t;
+}
+function isValidTime(t: string): boolean {
+  return /^\d{2}:\d{2}$/.test(t);
+}
+
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const PREF_LABELS: Record<string, string> = {
   normal:      "Normal day",
@@ -30,7 +39,7 @@ const SHORT_DAY_REASONS = [
 const OVERTIME_HOURS = [10, 11, 12, 13, 14, 15];
 
 export default function StartShiftScreen({ navigation }: { navigation: any }) {
-  const { startShift } = useShift() as any;
+  const { setShiftId, updateShiftField } = useShift() as any;
 
   const [loading,       setLoading]       = useState(false);
   const [workingTime,   setWorkingTime]   = useState<any>(null);
@@ -105,8 +114,20 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
         });
       }
 
-      // Start the actual shift
-      await startShift({ startTime, gpsLat, gpsLng });
+      // Create the shift record
+      const formattedTime = formatTimeInput(startTime);
+      if (!isValidTime(formattedTime)) {
+        Alert.alert("Invalid time", "Please enter time as HH:MM e.g. 06:00");
+        setLoading(false);
+        return;
+      }
+
+      const res = await api.post("/shifts", {
+        shiftDate: new Date().toISOString(),
+        startTime: formattedTime,
+      });
+      setShiftId(res.data.id);
+      updateShiftField("startTime", formattedTime);
 
       navigation.replace("Home");
     } catch (err: any) {
