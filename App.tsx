@@ -18,8 +18,8 @@ import {
   StartShiftScreen as OldStartShiftScreen,
   EndShiftScreen,
   ReviewScreen,
-  EndSegmentScreen,
 } from "./src/screens/ShiftScreens";
+import EndSegmentScreen from "./src/screens/EndSegmentScreen";
 import ChecklistScreen   from "./src/screens/ChecklistScreen";
 import DeliveriesScreen from "./src/screens/DeliveriesScreen";
 
