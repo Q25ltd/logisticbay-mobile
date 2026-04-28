@@ -4,11 +4,26 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, View } from "react-native";
 
 import { AuthProvider, useAuth } from "./src/AuthContext";
+import { ShiftProvider }         from "./src/ShiftContext";
+
 import LoginScreen          from "./src/screens/LoginScreen";
 import HomeScreen           from "./src/screens/HomeScreen";
-import NewShiftScreen       from "./src/screens/NewShiftScreen";
 import HistoryScreen        from "./src/screens/HistoryScreen";
-import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
+import ShiftDetailScreen    from "./src/screens/ShiftDetailScreen";
+import JobsScreen         from "./src/screens/JobsScreen";
+import JobDetailScreen    from "./src/screens/JobDetailScreen";
+import ChangePinScreen      from "./src/screens/ChangePinScreen";
+import ChecklistScreen      from "./src/screens/ChecklistScreen";
+import DeliveriesScreen     from "./src/screens/DeliveriesScreen";
+import EndSegmentScreen     from "./src/screens/EndSegmentScreen";
+
+import { StartShiftScreen as NewStartShiftScreen } from "./src/screens/StartShiftScreen";
+import {
+  StartShiftScreen as OldStartShiftScreen,
+  EndShiftScreen,
+  ReviewScreen,
+} from "./src/screens/ShiftScreens";
+
 import { COLOURS } from "./src/components";
 
 const Stack = createNativeStackNavigator();
@@ -30,9 +45,20 @@ function AppNavigator() {
         {user ? (
           <>
             <Stack.Screen name="Home"           component={HomeScreen} />
-            <Stack.Screen name="NewShift"        component={NewShiftScreen} />
-            <Stack.Screen name="History"         component={HistoryScreen} />
-            <Stack.Screen name="ChangePassword"  component={ChangePasswordScreen} />
+            <Stack.Screen name="StartShift"     component={NewStartShiftScreen} />
+            <Stack.Screen name="TruckChecklist" component={ChecklistScreen}
+              initialParams={{ type: "truck" }} />
+            <Stack.Screen name="TrailerChecklist" component={ChecklistScreen}
+              initialParams={{ type: "trailer" }} />
+            <Stack.Screen name="Deliveries"     component={DeliveriesScreen} />
+            <Stack.Screen name="EndSegment"     component={EndSegmentScreen} />
+            <Stack.Screen name="EndShift"       component={EndShiftScreen} />
+            <Stack.Screen name="Review"         component={ReviewScreen} />
+            <Stack.Screen name="History"        component={HistoryScreen} />
+            <Stack.Screen name="ChangePin"       component={ChangePinScreen} />
+            <Stack.Screen name="ShiftDetail"     component={ShiftDetailScreen} />
+            <Stack.Screen name="Jobs"            component={JobsScreen} />
+            <Stack.Screen name="JobDetail"       component={JobDetailScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -45,7 +71,9 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppNavigator />
+      <ShiftProvider>
+        <AppNavigator />
+      </ShiftProvider>
     </AuthProvider>
   );
 }
