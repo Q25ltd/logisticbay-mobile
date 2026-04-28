@@ -360,7 +360,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                   onPress={() => setEditPlan(ep => ({
                     ...ep,
                     pref:  p.key as any,
-                    hours: p.key === "unavailable" ? 0 : p.key === "overtime" ? 10 : ep.hours || 8,
+                    hours: p.key === "unavailable" ? 0 : p.key === "overtime" ? 10 : p.key === "short_day" ? 4 : 8,
                   }))}
                 >
                   <Text style={[styles.prefBtnText, editPlan.pref === p.key && { color: COLOURS.white }]}>
@@ -370,12 +370,12 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
               ))}
             </View>
 
-            {editPlan.pref !== "unavailable" && (
+            {editPlan.pref === "overtime" && (
               <>
-                <Text style={styles.fieldLabel}>Hours</Text>
+                <Text style={styles.fieldLabel}>Overtime hours (above normal)</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={styles.hoursRow}>
-                    {HOUR_OPTIONS.map(h => (
+                    {[9,10,11,12,13,14,15].map(h => (
                       <TouchableOpacity
                         key={h}
                         style={[styles.hoursBtn, editPlan.hours === h && styles.hoursBtnActive]}
@@ -389,6 +389,31 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                   </View>
                 </ScrollView>
               </>
+            )}
+            {editPlan.pref === "short_day" && (
+              <>
+                <Text style={styles.fieldLabel}>Finish after (hours)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.hoursRow}>
+                    {[2,3,4,5,6,7].map(h => (
+                      <TouchableOpacity
+                        key={h}
+                        style={[styles.hoursBtn, editPlan.hours === h && styles.hoursBtnActive]}
+                        onPress={() => setEditPlan(ep => ({ ...ep, hours: h }))}
+                      >
+                        <Text style={[styles.hoursBtnText, editPlan.hours === h && { color: COLOURS.white }]}>
+                          {h}h
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+            {editPlan.pref === "normal" && (
+              <View style={styles.normalNote}>
+                <Text style={styles.normalNoteText}>✓ Normal day — standard hours as set by your planner</Text>
+              </View>
             )}
 
             {editPlan.pref === "short_day" && (
@@ -494,4 +519,6 @@ const styles = StyleSheet.create({
   cancelBtnText:  { fontSize: 14, fontWeight: "600", color: COLOURS.muted },
   saveBtn:        { flex: 1, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
   saveBtnText:    { fontSize: 14, fontWeight: "700", color: COLOURS.white },
+  normalNote:     { backgroundColor: "#dcfce7", borderRadius: 8, padding: 12, marginTop: 8 },
+  normalNoteText: { fontSize: 13, color: "#14532d", fontWeight: "600" },
 });
