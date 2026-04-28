@@ -43,8 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  async function login(email: string, password: string): Promise<boolean> {
-    const res = await api.post("/auth/login", { email, password });
+  async function login(email: string, password: string, companyId?: number): Promise<any> {
+    const res = await api.post("/auth/login", { email, password, ...(companyId ? { companyId } : {}) });
+    if (res.data.requiresCompanySelection) return res.data;
     await saveTokens(res.data.accessToken, res.data.refreshToken);
     setUser(res.data.user);
     const pinChange = res.data.mustChangePin === true;
