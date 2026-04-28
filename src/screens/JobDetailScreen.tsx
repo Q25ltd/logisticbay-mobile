@@ -91,8 +91,25 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
     const action = ACTIONS[job.status];
     if (!action) return;
 
-    if (action.needsForm) {
+    // Check if planner requires confirmation for this step
+    const needsCollectForm = action.needsForm === "collect" && job.requireCollection;
+    const needsDeliverForm = action.needsForm === "deliver" && (job.requirePOD || job.requireDeliveryQty);
+
+    if (needsCollectForm || needsDeliverForm) {
       setShowForm(true);
+      return;
+    }
+
+    // No confirmation required — just tap through
+    if (action.needsForm) {
+      Alert.alert(
+        action.label,
+        action.description,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Confirm", onPress: () => doStatusUpdate(action.next, {}) },
+        ]
+      );
       return;
     }
 
@@ -120,6 +137,14 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   }
 
   async function handleDeliver() {
+    if (job.requirePOD && !podNumber.trim()) {
+      Alert.alert("Required", "Planner requires a POD / delivery reference number");
+      return;
+    }
+    if (job.requireDeliveryQty && !deliveredQty.trim()) {
+      Alert.alert("Required", "Planner requires the actual delivery quantity");
+      return;
+    }
     await doStatusUpdate("completed", {
       podNumber,
       deliveryNote,
@@ -368,6 +393,14 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
             <View style={styles.plannerNote}>
               <Text style={styles.plannerNoteLabel}>📌 Planner Notes</Text>
               <Text style={styles.plannerNoteText}>{job.plannerNotes}</Text>
+            </View>
+          ) : null}
+          {(job.requireCollection || job.requirePOD || job.requireDeliveryQty) ? (
+            <View style={[styles.plannerNote, { backgroundColor: "#fef3c7" }]}>
+              <Text style={[styles.plannerNoteLabel, { color: "#92400e" }]}>⚠️ Planner Requires</Text>
+              {job.requireCollection  ? <Text style={[styles.plannerNoteText, { color: "#92400e" }]}>• Confirm collection quantity</Text> : null}
+              {job.requirePOD         ? <Text style={[styles.plannerNoteText, { color: "#92400e" }]}>• POD / delivery reference</Text>      : null}
+              {job.requireDeliveryQty ? <Text style={[styles.plannerNoteText, { color: "#92400e" }]}>• Confirm delivery quantity</Text>      : null}
             </View>
           ) : null}
           {job.collectionNote ? (
