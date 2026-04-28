@@ -155,14 +155,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.gridLabel}>Holidays</Text>
             <Text style={styles.gridSub}>Request & track</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate("Availability")}
-          >
-            <Text style={styles.gridIcon}>📅</Text>
-            <Text style={styles.gridLabel}>Availability</Text>
-            <Text style={styles.gridSub}>Set your week</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.gridCard}
