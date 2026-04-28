@@ -147,6 +147,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.gridLabel}>My Shifts</Text>
             <Text style={styles.gridSub}>View history</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.gridCard}
+            onPress={() => navigation.navigate("Holidays")}
+          >
+            <Text style={styles.gridIcon}>🏖️</Text>
+            <Text style={styles.gridLabel}>Holidays</Text>
+            <Text style={styles.gridSub}>Request & track</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.gridCard}
