@@ -1,60 +1,89 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, Alert, TextInput, ActivityIndicator,
+  TouchableOpacity, Alert, TextInput, Modal, ActivityIndicator,
 } from "react-native";
 import * as Location from "expo-location";
 import { api } from "../api";
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 
-function formatTimeInput(t: string): string {
+const DAYS = [
+  { key: "mon", label: "Mon", full: "Monday" },
+  { key: "tue", label: "Tue", full: "Tuesday" },
+  { key: "wed", label: "Wed", full: "Wednesday" },
+  { key: "thu", label: "Thu", full: "Thursday" },
+  { key: "fri", label: "Fri", full: "Friday" },
+  { key: "sat", label: "Sat", full: "Saturday" },
+  { key: "sun", label: "Sun", full: "Sunday" },
+];
+
+const HOUR_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+const SHORT_REASONS = ["Medical appointment", "Family / personal", "Fatigue", "Other"];
+
+function getWeekStart(offset = 0): Date {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff + offset * 7);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getTodayKey(): string {
+  const day = new Date().getDay();
+  return ["sun","mon","tue","wed","thu","fri","sat"][day];
+}
+
+function formatTime(t: string): string {
   const clean = t.replace(/[^0-9]/g, "");
   if (clean.length >= 4) return `${clean.slice(0,2)}:${clean.slice(2,4)}`;
   return t;
 }
+
 function isValidTime(t: string): boolean {
   return /^\d{2}:\d{2}$/.test(t);
 }
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const PREF_LABELS: Record<string, string> = {
-  normal:      "Normal day",
-  overtime:    "Overtime",
-  short_day:   "Short day",
-  unavailable: "Unavailable",
-};
-const PREF_COLOURS: Record<string, string> = {
-  normal:      COLOURS.pass,
-  overtime:    "#f59e0b",
-  short_day:   "#f97316",
-  unavailable: COLOURS.muted,
-};
-const SHORT_DAY_REASONS = [
-  "Medical appointment",
-  "Family / personal",
-  "Fatigue",
-  "Other",
-];
-const OVERTIME_HOURS = [10, 11, 12, 13, 14, 15];
+interface DayPlan {
+  pref: "normal" | "overtime" | "short_day" | "unavailable";
+  hours: number;
+  shortReason?: string;
+  shortNote?: string;
+}
+
+const DEFAULT_PLAN: DayPlan = { pref: "normal", hours: 8 };
 
 export default function StartShiftScreen({ navigation }: { navigation: any }) {
   const { setShiftId, updateShiftField } = useShift() as any;
 
-  const [loading,       setLoading]       = useState(false);
-  const [workingTime,   setWorkingTime]   = useState<any>(null);
-  const [weekAvail,     setWeekAvail]     = useState<any>(null);
-
-  // Today's preference
-  const [prefType,      setPrefType]      = useState<"normal"|"overtime"|"short_day">("normal");
-  const [overtimeHours, setOvertimeHours] = useState<number>(10);
-  const [shortReason,   setShortReason]   = useState("");
-  const [shortNote,     setShortNote]     = useState("");
-  const [finishByTime,  setFinishByTime]  = useState("");
-  const [startTime,     setStartTime]     = useState(() => {
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [workingTime, setWorkingTime] = useState<any>(null);
+  const [startTime,   setStartTime]   = useState(() => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
   });
+
+  // Week plan - all 7 days
+  const [weekPlan, setWeekPlan] = useState<Record<string, DayPlan>>({
+    mon: { pref: "normal", hours: 8 },
+    tue: { pref: "normal", hours: 8 },
+    wed: { pref: "normal", hours: 8 },
+    thu: { pref: "normal", hours: 8 },
+    fri: { pref: "normal", hours: 8 },
+    sat: { pref: "unavailable", hours: 0 },
+    sun: { pref: "unavailable", hours: 0 },
+  });
+
+  // Day editor modal
+  const [editingDay,  setEditingDay]  = useState<string | null>(null);
+  const [editPlan,    setEditPlan]    = useState<DayPlan>(DEFAULT_PLAN);
+
+  const todayKey  = getTodayKey();
+  const weekStart = getWeekStart(0);
+  const isFriday  = new Date().getDay() === 5;
 
   useEffect(() => {
     loadData();
@@ -64,16 +93,72 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
     try {
       const [wtRes, avRes] = await Promise.all([
         api.get("/working-time/my"),
-        api.get("/availability/my"),
+        api.get(`/availability/my?weekStart=${weekStart.toISOString()}`),
       ]);
       setWorkingTime(wtRes.data);
-      setWeekAvail(avRes.data?.data);
+
+      // Load existing week plan if available
+      const avail = avRes.data?.data;
+      if (avail) {
+        const loaded: Record<string, DayPlan> = {};
+        DAYS.forEach(d => {
+          const pref  = avail[`${d.key}Pref`]  ?? "normal";
+          const note  = avail[`${d.key}Note`]  ?? "";
+          const hours = pref === "unavailable" ? 0 : pref === "overtime" ? 10 : 8;
+          loaded[d.key] = { pref, hours, shortNote: note };
+        });
+        setWeekPlan(loaded);
+      }
     } catch {}
+    setLoading(false);
+  }
+
+  function openDayEditor(dayKey: string) {
+    const today = new Date();
+    const todayIdx  = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const dayIdx    = DAYS.findIndex(d => d.key === dayKey);
+    const daysAhead = dayIdx - todayIdx;
+
+    // Strict rule — same day or tomorrow needs warning
+    if (daysAhead <= 1 && daysAhead >= 0 && weekPlan[dayKey].pref !== "normal") {
+      // Already set, just editing
+    }
+
+    setEditPlan({ ...weekPlan[dayKey] });
+    setEditingDay(dayKey);
+  }
+
+  function saveDay() {
+    if (!editingDay) return;
+
+    const today     = new Date();
+    const todayIdx  = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const dayIdx    = DAYS.findIndex(d => d.key === editingDay);
+    const daysAhead = dayIdx - todayIdx;
+
+    const update = () => {
+      setWeekPlan(p => ({ ...p, [editingDay]: editPlan }));
+      setEditingDay(null);
+    };
+
+    if (daysAhead <= 1 && daysAhead >= 0) {
+      Alert.alert(
+        "Short Notice Change",
+        "This is a same-day or next-day change. Your planner will be notified and may need to contact you.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Confirm Change", onPress: update },
+        ]
+      );
+    } else {
+      update();
+    }
   }
 
   async function handleStartShift() {
-    if (prefType === "short_day" && !shortReason) {
-      Alert.alert("Required", "Please select a reason for your short day request.");
+    const formattedTime = formatTime(startTime);
+    if (!isValidTime(formattedTime)) {
+      Alert.alert("Invalid time", "Please enter time as HH:MM e.g. 06:00");
       return;
     }
 
@@ -89,39 +174,30 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
       }
     } catch {}
 
-    setLoading(true);
+    setSaving(true);
     try {
-      // Save shift preference
-      const prefRes = await api.post("/shift-preferences", {
-        preferenceType: prefType,
-        requestedHours: prefType === "overtime" ? overtimeHours : null,
-        finishByTime:   prefType === "short_day" ? finishByTime : null,
-        shortDayReason: prefType === "short_day" ? shortReason : "",
-        shortDayNote:   prefType === "short_day" ? shortNote   : "",
-        overtimeHours:  prefType === "overtime"  ? overtimeHours : null,
-        startTime,
+      // Save week availability
+      const availPayload: any = { weekStart: weekStart.toISOString() };
+      DAYS.forEach(d => {
+        availPayload[`${d.key}Pref`] = weekPlan[d.key].pref;
+        availPayload[`${d.key}Note`] = weekPlan[d.key].shortNote ?? "";
+      });
+      await api.post("/availability/my", availPayload);
+
+      // Save today's preference
+      const todayPlan = weekPlan[todayKey];
+      await api.post("/shift-preferences", {
+        preferenceType: todayPlan.pref,
+        requestedHours: todayPlan.hours,
+        shortDayReason: todayPlan.shortReason ?? "",
+        shortDayNote:   todayPlan.shortNote   ?? "",
+        overtimeHours:  todayPlan.pref === "overtime" ? todayPlan.hours : null,
+        startTime:      formattedTime,
         gpsLat,
         gpsLng,
       });
 
-      // Show warnings if any
-      const warnings = prefRes.data.warnings ?? [];
-      if (warnings.length > 0) {
-        await new Promise<void>(resolve => {
-          Alert.alert("Working Time Notice", warnings.join("\n\n"), [
-            { text: "I understand", onPress: resolve },
-          ]);
-        });
-      }
-
-      // Create the shift record
-      const formattedTime = formatTimeInput(startTime);
-      if (!isValidTime(formattedTime)) {
-        Alert.alert("Invalid time", "Please enter time as HH:MM e.g. 06:00");
-        setLoading(false);
-        return;
-      }
-
+      // Create shift
       const res = await api.post("/shifts", {
         shiftDate: new Date().toISOString(),
         startTime: formattedTime,
@@ -133,21 +209,16 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
     } catch (err: any) {
       Alert.alert("Cannot Start Shift", err.response?.data?.error ?? "Something went wrong");
     }
-    setLoading(false);
+    setSaving(false);
   }
 
-  const today = new Date();
-  const todayDay = today.getDay();
-  const weekDayIndex = todayDay === 0 ? 6 : todayDay - 1;
-  const todayName = DAYS[weekDayIndex];
+  const todayPlan = weekPlan[todayKey];
 
-  const getTodayPref = () => {
-    if (!weekAvail) return null;
-    const key = todayName.toLowerCase() + "Pref";
-    return weekAvail[key];
-  };
-
-  const todayWeekPref = getTodayPref();
+  if (loading) return (
+    <SafeAreaView style={styles.center}>
+      <ActivityIndicator size="large" color={COLOURS.primary} />
+    </SafeAreaView>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -161,13 +232,12 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
 
-        {/* Date & Time */}
+        {/* Date & start time */}
         <Card style={{ marginBottom: 12 }}>
-          <Text style={styles.sectionLabel}>Shift Start</Text>
           <Text style={styles.dateText}>
-            {today.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
           </Text>
-          <Text style={styles.timeLabel}>Start time</Text>
+          <Text style={styles.fieldLabel}>Start time</Text>
           <TextInput
             style={styles.timeInput}
             value={startTime}
@@ -176,168 +246,184 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
             keyboardType="numbers-and-punctuation"
             maxLength={5}
           />
-          <Text style={styles.hint}>📍 GPS location will be recorded when you start</Text>
+          <Text style={styles.hint}>📍 GPS location recorded at shift start</Text>
         </Card>
 
-        {/* Working time summary */}
-        {workingTime && (
-          <Card style={{ marginBottom: 12 }}>
-            <Text style={styles.sectionLabel}>This Week's Hours</Text>
-            <View style={styles.hoursRow}>
-              <View style={styles.hoursStat}>
-                <Text style={styles.hoursValue}>{workingTime.weeklyHours.toFixed(1)}</Text>
-                <Text style={styles.hoursLabel}>Worked</Text>
-              </View>
-              <View style={styles.hoursDivider} />
-              <View style={styles.hoursStat}>
-                <Text style={[styles.hoursValue, workingTime.isNearLimit && { color: "#f59e0b" }]}>
-                  {workingTime.remainingHours.toFixed(1)}
-                </Text>
-                <Text style={styles.hoursLabel}>Remaining</Text>
-              </View>
-              <View style={styles.hoursDivider} />
-              <View style={styles.hoursStat}>
-                <Text style={styles.hoursValue}>48.0</Text>
-                <Text style={styles.hoursLabel}>Weekly Max</Text>
-              </View>
-            </View>
-            {workingTime.warnings?.map((w: string, i: number) => (
-              <View key={i} style={styles.warningBanner}>
-                <Text style={styles.warningText}>{w}</Text>
-              </View>
-            ))}
-          </Card>
+        {/* Working time */}
+        {workingTime && (workingTime.isNearLimit || workingTime.isAtLimit) && (
+          <View style={styles.warningBanner}>
+            <Text style={styles.warningText}>{workingTime.warnings[0]}</Text>
+          </View>
         )}
 
-        {/* Weekly availability summary */}
-        {weekAvail && (
-          <Card style={{ marginBottom: 12 }}>
-            <Text style={styles.sectionLabel}>Your Week's Availability</Text>
-            <View style={styles.weekRow}>
-              {DAYS.map((day, i) => {
-                const key = day.toLowerCase() + "Pref";
-                const pref = weekAvail[key] ?? "normal";
-                const isToday = i === weekDayIndex;
-                return (
-                  <View key={day} style={[styles.dayCell, isToday && styles.dayCellToday]}>
-                    <Text style={[styles.dayName, isToday && styles.dayNameToday]}>{day}</Text>
-                    <View style={[styles.dayDot, { backgroundColor: PREF_COLOURS[pref] ?? COLOURS.muted }]} />
-                    <Text style={styles.dayPref}>{pref === "normal" ? "✓" : pref === "unavailable" ? "✗" : pref === "overtime" ? "OT" : "SD"}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            {todayWeekPref && todayWeekPref !== "normal" && (
-              <View style={[styles.todayPrefBanner, { borderLeftColor: PREF_COLOURS[todayWeekPref] }]}>
-                <Text style={styles.todayPrefText}>
-                  Your availability for today: <Text style={{ fontWeight: "700" }}>{PREF_LABELS[todayWeekPref]}</Text>
-                </Text>
-              </View>
-            )}
-          </Card>
-        )}
-
-        {/* Today's preference */}
+        {/* Week plan */}
         <Card style={{ marginBottom: 12 }}>
-          <Text style={styles.sectionLabel}>Today's Working Preference</Text>
-          <Text style={styles.guidanceText}>
-            This helps your planner build the day. Your final schedule may still change.
-          </Text>
+          <Text style={styles.sectionLabel}>This Week's Plan</Text>
+          <Text style={styles.hint}>Tap any day to change · Today is highlighted</Text>
+          <View style={{ marginTop: 10 }}>
+            {DAYS.map(day => {
+              const plan    = weekPlan[day.key];
+              const isToday = day.key === todayKey;
+              const prefColour =
+                plan.pref === "normal"      ? COLOURS.pass  :
+                plan.pref === "overtime"    ? "#f59e0b"     :
+                plan.pref === "short_day"   ? "#f97316"     : COLOURS.muted;
 
-          <View style={styles.prefRow}>
-            {(["normal", "overtime", "short_day"] as const).map(p => (
-              <TouchableOpacity
-                key={p}
-                style={[styles.prefBtn, prefType === p && { backgroundColor: PREF_COLOURS[p], borderColor: PREF_COLOURS[p] }]}
-                onPress={() => setPrefType(p)}
-              >
-                <Text style={[styles.prefBtnText, prefType === p && { color: COLOURS.white }]}>
-                  {p === "normal" ? "Normal" : p === "overtime" ? "Overtime" : "Short Day"}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              return (
+                <TouchableOpacity
+                  key={day.key}
+                  style={[styles.dayRow, isToday && styles.dayRowToday]}
+                  onPress={() => openDayEditor(day.key)}
+                >
+                  <Text style={[styles.dayName, isToday && { color: COLOURS.primary, fontWeight: "800" }]}>
+                    {day.label} {isToday ? "← Today" : ""}
+                  </Text>
+                  <View style={styles.dayRight}>
+                    {plan.pref !== "unavailable" && (
+                      <Text style={styles.dayHours}>{plan.hours}h</Text>
+                    )}
+                    <View style={[styles.prefPill, { backgroundColor: prefColour + "20" }]}>
+                      <Text style={[styles.prefPillText, { color: prefColour }]}>
+                        {plan.pref === "normal"      ? "Normal"     :
+                         plan.pref === "overtime"    ? "Overtime"   :
+                         plan.pref === "short_day"   ? "Short day"  : "Unavailable"}
+                      </Text>
+                    </View>
+                    <Text style={styles.editArrow}>›</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Overtime options */}
-          {prefType === "overtime" && (
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.subLabel}>Preferred hours today</Text>
-              <View style={styles.hoursGrid}>
-                {OVERTIME_HOURS.map(h => (
-                  <TouchableOpacity
-                    key={h}
-                    style={[styles.hoursBtn, overtimeHours === h && styles.hoursBtnActive]}
-                    onPress={() => setOvertimeHours(h)}
-                  >
-                    <Text style={[styles.hoursBtnText, overtimeHours === h && styles.hoursBtnTextActive]}>{h}h</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.guidanceText}>
-                Overtime is subject to planner approval and working time regulations.
-              </Text>
-            </View>
-          )}
-
-          {/* Short day options */}
-          {prefType === "short_day" && (
-            <View style={{ marginTop: 12 }}>
-              <View style={styles.shortDayWarning}>
-                <Text style={styles.shortDayWarningText}>
-                  ⚠️ Short day requests may need planner or manager confirmation.
-                </Text>
-              </View>
-              <Text style={styles.subLabel}>Reason</Text>
-              {SHORT_DAY_REASONS.map(r => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.reasonBtn, shortReason === r && styles.reasonBtnActive]}
-                  onPress={() => setShortReason(r)}
-                >
-                  <Text style={[styles.reasonBtnText, shortReason === r && styles.reasonBtnTextActive]}>{r}</Text>
-                </TouchableOpacity>
-              ))}
-              <Text style={styles.subLabel}>Finish by (optional)</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={finishByTime}
-                onChangeText={setFinishByTime}
-                placeholder="e.g. 13:00"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
-              <Text style={styles.subLabel}>Additional note (optional)</Text>
-              <TextInput
-                style={[styles.timeInput, { minHeight: 60 }]}
-                value={shortNote}
-                onChangeText={setShortNote}
-                placeholder="Any additional information for your planner..."
-                multiline
-              />
-            </View>
+          {isFriday && (
+            <TouchableOpacity
+              style={styles.repeatBtn}
+              onPress={() => Alert.alert(
+                "Repeat pattern?",
+                "This will copy your current week plan to next week.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Yes, repeat", onPress: async () => {
+                    const nextWeekStart = getWeekStart(1);
+                    const payload: any = { weekStart: nextWeekStart.toISOString() };
+                    DAYS.forEach(d => {
+                      payload[`${d.key}Pref`] = weekPlan[d.key].pref;
+                      payload[`${d.key}Note`] = weekPlan[d.key].shortNote ?? "";
+                    });
+                    try {
+                      await api.post("/availability/my", payload);
+                      Alert.alert("✅ Done", "Next week's availability set to the same pattern.");
+                    } catch { Alert.alert("Error", "Could not save next week"); }
+                  }},
+                ]
+              )}
+            >
+              <Text style={styles.repeatBtnText}>↻ It's Friday — repeat this pattern for next week</Text>
+            </TouchableOpacity>
           )}
         </Card>
 
         <Text style={styles.legalNote}>
-          🇬🇧 UK Working Time Regulations apply. Maximum 48 hours per week average. Minimum 11 hours rest between shifts. Breaks during shift are your responsibility.
+          🇬🇧 Max 48h/week · Min 11h rest between shifts · Breaks are your responsibility
         </Text>
-
       </ScrollView>
 
       <View style={styles.bottomNav}>
         <Button
-          label={loading ? "Starting shift..." : "🚛 Start Shift"}
+          label={saving ? "Starting..." : "🚛 Start Shift"}
           onPress={handleStartShift}
-          loading={loading}
+          loading={saving}
           style={{ backgroundColor: COLOURS.primary }}
         />
       </View>
+
+      {/* Day editor modal */}
+      <Modal visible={!!editingDay} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>
+              {DAYS.find(d => d.key === editingDay)?.full}
+            </Text>
+
+            <Text style={styles.fieldLabel}>Availability</Text>
+            <View style={styles.prefRow}>
+              {[
+                { key: "normal",      label: "Normal",      colour: COLOURS.pass },
+                { key: "overtime",    label: "Overtime",    colour: "#f59e0b" },
+                { key: "short_day",   label: "Short Day",   colour: "#f97316" },
+                { key: "unavailable", label: "Unavailable", colour: COLOURS.muted },
+              ].map(p => (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[styles.prefBtn, editPlan.pref === p.key && { backgroundColor: p.colour, borderColor: p.colour }]}
+                  onPress={() => setEditPlan(ep => ({
+                    ...ep,
+                    pref:  p.key as any,
+                    hours: p.key === "unavailable" ? 0 : p.key === "overtime" ? 10 : ep.hours || 8,
+                  }))}
+                >
+                  <Text style={[styles.prefBtnText, editPlan.pref === p.key && { color: COLOURS.white }]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {editPlan.pref !== "unavailable" && (
+              <>
+                <Text style={styles.fieldLabel}>Hours</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.hoursRow}>
+                    {HOUR_OPTIONS.map(h => (
+                      <TouchableOpacity
+                        key={h}
+                        style={[styles.hoursBtn, editPlan.hours === h && styles.hoursBtnActive]}
+                        onPress={() => setEditPlan(ep => ({ ...ep, hours: h }))}
+                      >
+                        <Text style={[styles.hoursBtnText, editPlan.hours === h && { color: COLOURS.white }]}>
+                          {h}h
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+
+            {editPlan.pref === "short_day" && (
+              <>
+                <Text style={styles.fieldLabel}>Reason</Text>
+                {SHORT_REASONS.map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.reasonBtn, editPlan.shortReason === r && styles.reasonBtnActive]}
+                    onPress={() => setEditPlan(ep => ({ ...ep, shortReason: r }))}
+                  >
+                    <Text style={[styles.reasonBtnText, editPlan.shortReason === r && { color: COLOURS.white }]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingDay(null)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveDay}>
+                <Text style={styles.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: COLOURS.background },
+  center:         { flex: 1, alignItems: "center", justifyContent: "center" },
   topBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLOURS.white,
@@ -345,57 +431,67 @@ const styles = StyleSheet.create({
   },
   backText:       { color: COLOURS.accent, fontSize: 15, fontWeight: "600" },
   topTitle:       { fontSize: 17, fontWeight: "700", color: COLOURS.primary },
-  sectionLabel:   { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   dateText:       { fontSize: 18, fontWeight: "700", color: COLOURS.primary, marginBottom: 12 },
-  timeLabel:      { fontSize: 12, color: COLOURS.muted, marginBottom: 4 },
+  fieldLabel:     { fontSize: 12, fontWeight: "600", color: COLOURS.primary, marginBottom: 4, marginTop: 8 },
   timeInput: {
     borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 8,
-    padding: 12, fontSize: 20, fontWeight: "700", color: COLOURS.primary,
-    textAlign: "center", marginBottom: 8,
+    padding: 12, fontSize: 24, fontWeight: "700", color: COLOURS.primary,
+    textAlign: "center", marginBottom: 6,
   },
   hint:           { fontSize: 11, color: COLOURS.muted, fontStyle: "italic" },
-  hoursRow:       { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  hoursStat:      { flex: 1, alignItems: "center" },
-  hoursValue:     { fontSize: 24, fontWeight: "900", color: COLOURS.primary },
-  hoursLabel:     { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase" },
-  hoursDivider:   { width: 1, height: 40, backgroundColor: COLOURS.border },
-  warningBanner:  { backgroundColor: "#fef3c7", borderRadius: 8, padding: 10, marginTop: 8 },
+  sectionLabel:   { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5 },
+  warningBanner:  { backgroundColor: "#fef3c7", borderRadius: 8, padding: 12, marginBottom: 12 },
   warningText:    { fontSize: 12, color: "#92400e", fontWeight: "600" },
-  weekRow:        { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  dayCell:        { alignItems: "center", flex: 1, padding: 4, borderRadius: 8 },
-  dayCellToday:   { backgroundColor: COLOURS.primary + "15" },
-  dayName:        { fontSize: 10, color: COLOURS.muted, fontWeight: "600", marginBottom: 4 },
-  dayNameToday:   { color: COLOURS.primary },
-  dayDot:         { width: 8, height: 8, borderRadius: 4, marginBottom: 2 },
-  dayPref:        { fontSize: 9, color: COLOURS.muted },
-  todayPrefBanner:{ borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 6, marginTop: 8 },
-  todayPrefText:  { fontSize: 13, color: COLOURS.primary },
-  guidanceText:   { fontSize: 12, color: COLOURS.muted, fontStyle: "italic", marginBottom: 8 },
-  prefRow:        { flexDirection: "row", gap: 8, marginBottom: 8 },
+  dayRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLOURS.border,
+  },
+  dayRowToday:    { backgroundColor: "#f0f4ff", marginHorizontal: -16, paddingHorizontal: 16, borderRadius: 8 },
+  dayName:        { fontSize: 14, color: COLOURS.primary, fontWeight: "600", flex: 1 },
+  dayRight:       { flexDirection: "row", alignItems: "center", gap: 8 },
+  dayHours:       { fontSize: 13, fontWeight: "700", color: COLOURS.primary },
+  prefPill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  prefPillText:   { fontSize: 11, fontWeight: "700" },
+  editArrow:      { fontSize: 18, color: COLOURS.muted },
+  repeatBtn: {
+    marginTop: 12, padding: 12, borderRadius: 8,
+    backgroundColor: "#eff6ff", alignItems: "center",
+  },
+  repeatBtnText:  { fontSize: 13, fontWeight: "600", color: "#1e40af" },
+  legalNote:      { fontSize: 11, color: COLOURS.muted, textAlign: "center", lineHeight: 16, marginTop: 8 },
+  bottomNav:      { padding: 16, backgroundColor: COLOURS.white, borderTopWidth: 1, borderTopColor: COLOURS.border },
+  // Modal
+  modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalSheet: {
+    backgroundColor: COLOURS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, paddingBottom: 40,
+  },
+  modalTitle:     { fontSize: 18, fontWeight: "700", color: COLOURS.primary, marginBottom: 12 },
+  prefRow:        { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   prefBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
     borderWidth: 1.5, borderColor: COLOURS.border,
-    alignItems: "center", backgroundColor: COLOURS.white,
   },
-  prefBtnText:    { fontSize: 12, fontWeight: "600", color: COLOURS.muted },
-  subLabel:       { fontSize: 12, fontWeight: "600", color: COLOURS.primary, marginBottom: 6, marginTop: 8 },
-  hoursGrid:      { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  prefBtnText:    { fontSize: 13, fontWeight: "600", color: COLOURS.muted },
+  hoursRow:       { flexDirection: "row", gap: 8, paddingVertical: 4 },
   hoursBtn: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8,
-    borderWidth: 1.5, borderColor: COLOURS.border, backgroundColor: COLOURS.white,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: COLOURS.border,
   },
-  hoursBtnActive:     { backgroundColor: "#f59e0b", borderColor: "#f59e0b" },
-  hoursBtnText:       { fontSize: 14, fontWeight: "600", color: COLOURS.muted },
-  hoursBtnTextActive: { color: COLOURS.white },
-  shortDayWarning:    { backgroundColor: "#fef3c7", borderRadius: 8, padding: 10, marginBottom: 8 },
-  shortDayWarningText:{ fontSize: 12, color: "#92400e" },
+  hoursBtnActive: { backgroundColor: COLOURS.primary, borderColor: COLOURS.primary },
+  hoursBtnText:   { fontSize: 14, fontWeight: "700", color: COLOURS.muted },
   reasonBtn: {
-    padding: 12, borderRadius: 8, borderWidth: 1.5,
-    borderColor: COLOURS.border, marginBottom: 6, backgroundColor: COLOURS.white,
+    padding: 10, borderRadius: 8, borderWidth: 1.5,
+    borderColor: COLOURS.border, marginBottom: 6,
   },
   reasonBtnActive:    { backgroundColor: "#f97316", borderColor: "#f97316" },
   reasonBtnText:      { fontSize: 13, color: COLOURS.muted, fontWeight: "600" },
-  reasonBtnTextActive:{ color: COLOURS.white },
-  legalNote:      { fontSize: 11, color: COLOURS.muted, textAlign: "center", lineHeight: 16, marginTop: 8 },
-  bottomNav:      { padding: 16, backgroundColor: COLOURS.white, borderTopWidth: 1, borderTopColor: COLOURS.border },
+  modalBtns:      { flexDirection: "row", gap: 12, marginTop: 16 },
+  cancelBtn: {
+    flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5,
+    borderColor: COLOURS.border, alignItems: "center",
+  },
+  cancelBtnText:  { fontSize: 14, fontWeight: "600", color: COLOURS.muted },
+  saveBtn:        { flex: 1, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
+  saveBtnText:    { fontSize: 14, fontWeight: "700", color: COLOURS.white },
 });
