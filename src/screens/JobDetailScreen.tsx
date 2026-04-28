@@ -61,6 +61,13 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   const [showNoteBox,  setShowNoteBox]  = useState(false);
   const [showForm,     setShowForm]     = useState(false);
 
+  // Vehicle confirmation
+  const [truckReg,     setTruckReg]     = useState("");
+  const [trailerReg,   setTrailerReg]   = useState("");
+  const [vehicleClass, setVehicleClass] = useState("class1");
+  const [vehicleConfirmed, setVehicleConfirmed] = useState(false);
+  const [showVehicleForm,  setShowVehicleForm]  = useState(false);
+
   // Collection form
   const [actualQty,    setActualQty]    = useState("");
   const [actualUnit,   setActualUnit]   = useState("pallets");
@@ -75,6 +82,10 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
     try {
       const res = await api.get(`/jobs/${jobId}`);
       setJob(res.data);
+      // Pre-fill vehicle from planner assignment
+      if (res.data.assignedTruck)   setTruckReg(res.data.assignedTruck);
+      if (res.data.assignedTrailer) setTrailerReg(res.data.assignedTrailer);
+      if (res.data.vehicleClass)    setVehicleClass(res.data.vehicleClass);
       // Pre-fill delivery qty from collected qty
       if (res.data.actualQuantity) setDeliveredQty(res.data.actualQuantity);
       if (res.data.actualUnit)     setActualUnit(res.data.actualUnit);
@@ -90,6 +101,12 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   async function handleAction() {
     const action = ACTIONS[job.status];
     if (!action) return;
+
+    // Require vehicle confirmation before starting job
+    if ((job.status === "pending" || job.status === "accepted") && !vehicleConfirmed) {
+      setShowVehicleForm(true);
+      return;
+    }
 
     // Check if planner requires confirmation for this step
     const needsCollectForm = action.needsForm === "collect" && job.requireCollection;
@@ -190,6 +207,90 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
 
   const action      = ACTIONS[job.status];
   const statusStyle = STATUS_COLOURS[job.status] ?? STATUS_COLOURS.pending;
+
+  // Vehicle confirmation modal
+  if (showVehicleForm) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setShowVehicleForm(false)}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>Confirm Vehicle</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+          <Card>
+            {job.assignedTruck ? (
+              <View style={styles.assignedVehicleBanner}>
+                <Text style={styles.assignedVehicleLabel}>🚛 Assigned by planner</Text>
+                <Text style={styles.assignedVehicleReg}>{job.assignedTruck}</Text>
+                {job.assignedTrailer ? <Text style={styles.assignedVehicleReg}>{job.assignedTrailer}</Text> : null}
+              </View>
+            ) : (
+              <View style={styles.noVehicleBanner}>
+                <Text style={styles.noVehicleText}>⚠️ No vehicle assigned by planner</Text>
+                <Text style={styles.noVehicleSub}>Please enter the vehicle details below</Text>
+              </View>
+            )}
+
+            <Text style={styles.sectionLabel}>Vehicle Class</Text>
+            <View style={styles.unitRow}>
+              {[
+                { key: "class1", label: "Class 1 (Artic)" },
+                { key: "class2", label: "Class 2 (Rigid)" },
+                { key: "van",    label: "Van" },
+              ].map(v => (
+                <TouchableOpacity
+                  key={v.key}
+                  style={[styles.unitBtn, vehicleClass === v.key && styles.unitBtnActive]}
+                  onPress={() => setVehicleClass(v.key)}
+                >
+                  <Text style={[styles.unitBtnText, vehicleClass === v.key && styles.unitBtnTextActive]}>{v.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.sectionLabel}>Truck Registration</Text>
+            <TextInput
+              style={styles.input}
+              value={truckReg}
+              onChangeText={t => setTruckReg(t.toUpperCase())}
+              placeholder="e.g. AB12 CDE"
+              placeholderTextColor={COLOURS.muted}
+              autoCapitalize="characters"
+            />
+
+            <Text style={styles.sectionLabel}>Trailer Registration <Text style={styles.optional}>(if applicable)</Text></Text>
+            <TextInput
+              style={styles.input}
+              value={trailerReg}
+              onChangeText={t => setTrailerReg(t.toUpperCase())}
+              placeholder="e.g. TRL123 or leave blank"
+              placeholderTextColor={COLOURS.muted}
+              autoCapitalize="characters"
+            />
+          </Card>
+        </ScrollView>
+        <View style={styles.bottomNav}>
+          <Button
+            label="✅ Confirm Vehicle & Start Job"
+            onPress={() => {
+              if (!truckReg.trim()) {
+                Alert.alert("Required", "Please enter the truck registration");
+                return;
+              }
+              setVehicleConfirmed(true);
+              setShowVehicleForm(false);
+              // Now actually start the job
+              doStatusUpdate("in_progress", {});
+            }}
+            style={{ backgroundColor: COLOURS.accent }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Collection form modal
   if (showForm && action?.needsForm === "collect") {
@@ -602,7 +703,10 @@ const styles = StyleSheet.create({
   completedText:   { fontSize: 15, fontWeight: "700", color: "#14532d" },
   noShiftBar:      { backgroundColor: "#fff7ed", borderRadius: 10, padding: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#f59e0b" },
   noShiftText:     { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
-  noShiftSub:      { fontSize: 12, color: "#92400e", opacity: 0.7 },
+  noShiftSub:        { fontSize: 12, color: "#92400e", opacity: 0.7 },
+  assignedVehicleBanner: { backgroundColor: "#dcfce7", borderRadius: 8, padding: 12, marginBottom: 12 },
+  assignedVehicleLabel:  { fontSize: 11, color: "#14532d", fontWeight: "700", marginBottom: 4 },
+  assignedVehicleReg:    { fontSize: 20, fontWeight: "900", color: "#14532d", letterSpacing: 1 },
   endShiftBtn:     { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
   endShiftBtnText: { fontSize: 14, fontWeight: "700", color: COLOURS.white },
   formInfo:        { fontSize: 14, color: COLOURS.primary, marginBottom: 12, padding: 10, backgroundColor: COLOURS.background, borderRadius: 8 },
