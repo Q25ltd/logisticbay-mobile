@@ -205,7 +205,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
       setShiftId(res.data.id);
       updateShiftField("startTime", formattedTime);
 
-      navigation.replace("Home");
+      navigation.replace("Jobs");
     } catch (err: any) {
       Alert.alert("Cannot Start Shift", err.response?.data?.error ?? "Something went wrong");
     }
