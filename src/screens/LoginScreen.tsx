@@ -18,6 +18,10 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
   const [pin,         setPin]         = useState("");
   const [loading,     setLoading]     = useState(false);
   const [showPin,     setShowPin]     = useState(false);
+  const [companies,   setCompanies]   = useState<any[]>([]);
+  const [showPicker,  setShowPicker]  = useState(false);
+  const [savedEmail,  setSavedEmail]  = useState("");
+  const [savedPass,   setSavedPass]   = useState("");
   const [hasBiometric, setHasBiometric] = useState(false);
   const [bioEnabled,  setBioEnabled]  = useState(false);
   const [bioChecked,  setBioChecked]  = useState(false);
@@ -76,7 +80,15 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
     setLoading(true);
     try {
-      await login(email.toLowerCase().trim(), pin.trim());
+      const result = await login(email.toLowerCase().trim(), pin.trim());
+      if (result?.requiresCompanySelection) {
+        setSavedEmail(email.toLowerCase().trim());
+        setSavedPass(pin.trim());
+        setCompanies(result.companies);
+        setShowPicker(true);
+        setLoading(false);
+        return;
+      }
 
       // After successful login, offer to enable biometric
       if (hasBiometric && !bioEnabled) {
@@ -104,6 +116,47 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
   }
 
   if (!bioChecked) return null;
+
+  // Company picker screen
+  if (showPicker) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.inner}>
+          <View style={styles.header}>
+            <Text style={styles.logo}>Logistic<Text style={{ color: COLOURS.accent }}>Bay</Text></Text>
+            <Text style={styles.subtitle}>Where are you working today?</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.label}>Select Company</Text>
+            {companies.map((c: any) => (
+              <TouchableOpacity
+                key={c.companyId}
+                style={styles.companyBtn}
+                onPress={async () => {
+                  setLoading(true);
+                  try {
+                    await login(savedEmail, savedPass, c.companyId);
+                  } catch {
+                    Alert.alert("Error", "Could not sign in to this company");
+                  }
+                  setLoading(false);
+                }}
+              >
+                <View>
+                  <Text style={styles.companyBtnName}>{c.companyName}</Text>
+                  <Text style={styles.companyBtnRole}>{c.role.replace("_", " ")}</Text>
+                </View>
+                <Text style={styles.companyBtnArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity onPress={() => setShowPicker(false)}>
+            <Text style={styles.disableBio}>← Back to sign in</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -217,5 +270,9 @@ const styles = StyleSheet.create({
   hint:         { fontSize: 11, color: COLOURS.muted, marginBottom: 8 },
   loginBtn:     { marginBottom: 12 },
   disableBio:   { textAlign: "center", fontSize: 12, color: COLOURS.muted, marginBottom: 12, textDecorationLine: "underline" },
+  companyBtn:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderWidth: 1.5, borderColor: COLOURS.border, borderRadius: 10, marginBottom: 8, backgroundColor: COLOURS.background },
+  companyBtnName: { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
+  companyBtnRole: { fontSize: 11, color: COLOURS.muted, marginTop: 2, textTransform: "capitalize" },
+  companyBtnArrow:{ fontSize: 18, color: COLOURS.accent },
   footer:       { textAlign: "center", fontSize: 12, color: COLOURS.muted, lineHeight: 18 },
 });
