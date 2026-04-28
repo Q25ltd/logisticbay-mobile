@@ -17,8 +17,8 @@ import ChecklistScreen      from "./src/screens/ChecklistScreen";
 import DeliveriesScreen     from "./src/screens/DeliveriesScreen";
 import EndSegmentScreen     from "./src/screens/EndSegmentScreen";
 
-import { StartShiftScreen as NewStartShiftScreen } from "./src/screens/StartShiftScreen";
-import { HolidayScreen } from "./src/screens/HolidayScreen";
+import NewStartShiftScreen from "./src/screens/StartShiftScreen";
+import HolidayScreen from "./src/screens/HolidayScreen";
 import {
   StartShiftScreen as OldStartShiftScreen,
   EndShiftScreen,
