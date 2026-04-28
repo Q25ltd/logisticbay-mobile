@@ -20,8 +20,8 @@ import {
   ReviewScreen,
   EndSegmentScreen,
 } from "./src/screens/ShiftScreens";
-import { ChecklistScreen }  from "./src/screens/ChecklistScreen";
-import { DeliveriesScreen } from "./src/screens/DeliveriesScreen";
+import ChecklistScreen   from "./src/screens/ChecklistScreen";
+import DeliveriesScreen from "./src/screens/DeliveriesScreen";
 
 const Stack = createNativeStackNavigator();
 
