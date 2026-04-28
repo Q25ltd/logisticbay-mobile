@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, View } from "react-native";
@@ -40,11 +40,15 @@ function AppNavigator() {
     );
   }
 
+  const { draft, draftRestored } = useShift() as any;
+  const hasActiveShift = draftRestored && !!draft?.shiftId;
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
+            <Stack.Screen name="Initial"         component={InitialScreen} />
             <Stack.Screen name="Home"           component={HomeScreen} />
             <Stack.Screen name="StartShift"     component={NewStartShiftScreen} />
             <Stack.Screen name="TruckChecklist" component={ChecklistScreen}
