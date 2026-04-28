@@ -69,11 +69,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <TouchableOpacity
               style={styles.resumeBtn}
               onPress={() => {
-                // If finish time not entered yet, go to EndShift regardless of lastScreen
-                // This prevents jumping straight to Review with no finish time
+                // New flow: if shift active and lastScreen not set or is old-style, go to Jobs
+                const SAFE_SCREENS = ["EndShift", "Review", "Jobs", "JobDetail"];
+                const rawScreen  = draft?.lastScreen;
                 const hasFinishTime = !!(draft?.finishTime);
-                const lastScreen    = draft?.lastScreen ?? "EndShift";
-                const screen = (!hasFinishTime && lastScreen === "Review") ? "EndShift" : lastScreen;
+
+                // If lastScreen is not set or is StartShift/old screen, go to Jobs
+                if (!rawScreen || !SAFE_SCREENS.includes(rawScreen)) {
+                  navigation.navigate("Jobs");
+                  return;
+                }
+
+                // If finish time not entered yet, don't go to Review
+                const screen = (!hasFinishTime && rawScreen === "Review") ? "EndShift" : rawScreen;
                 navigation.navigate(screen);
               }}
             >

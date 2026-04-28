@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, SafeAreaView,
   TouchableOpacity, ActivityIndicator, RefreshControl,
@@ -97,8 +97,12 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
-  const { draft, draftRestored } = useShift() as any;
+  const { draft, draftRestored, updateShiftField } = useShift() as any;
   const hasActiveShift = draftRestored && !!draft?.shiftId;
+
+  useEffect(() => {
+    if (hasActiveShift) updateShiftField("lastScreen", "Jobs");
+  }, [hasActiveShift]);
 
   async function load(refresh = false) {
     if (refresh) setRefreshing(true); else setLoading(true);
