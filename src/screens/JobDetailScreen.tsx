@@ -347,6 +347,38 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
           ))}
         </View>
 
+        {/* Vehicle */}
+        <Card style={{ marginBottom: 12 }}>
+          <Text style={styles.sectionLabel}>Assigned Vehicle</Text>
+          {job.assignedTruck ? (
+            <View>
+              <View style={styles.vehicleRow}>
+                <Text style={styles.vehicleIcon}>🚛</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.vehicleLabel}>TRUCK</Text>
+                  <Text style={styles.vehicleReg}>{job.assignedTruck}</Text>
+                </View>
+              </View>
+              {job.assignedTrailer ? (
+                <View style={styles.vehicleRow}>
+                  <Text style={styles.vehicleIcon}>🚚</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vehicleLabel}>TRAILER</Text>
+                    <Text style={styles.vehicleReg}>{job.assignedTrailer}</Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.vehicleNote}>No trailer assigned — solo run</Text>
+              )}
+            </View>
+          ) : (
+            <View style={styles.noVehicleBanner}>
+              <Text style={styles.noVehicleText}>⚠️ No vehicle assigned</Text>
+              <Text style={styles.noVehicleSub}>Speak to your planner or enter manually below</Text>
+            </View>
+          )}
+        </Card>
+
         {/* Route */}
         <Card style={{ marginBottom: 12 }}>
           <Text style={styles.sectionLabel}>Route</Text>
@@ -564,6 +596,14 @@ const styles = StyleSheet.create({
   noShiftText:     { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
   noShiftSub:      { fontSize: 12, color: "#92400e", opacity: 0.7 },
   formInfo:        { fontSize: 14, color: COLOURS.primary, marginBottom: 12, padding: 10, backgroundColor: COLOURS.background, borderRadius: 8 },
+  vehicleRow:      { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
+  vehicleIcon:     { fontSize: 24 },
+  vehicleLabel:    { fontSize: 9, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5 },
+  vehicleReg:      { fontSize: 18, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
+  vehicleNote:     { fontSize: 12, color: COLOURS.muted, fontStyle: "italic", marginTop: 4 },
+  noVehicleBanner: { backgroundColor: "#fef3c7", borderRadius: 8, padding: 12 },
+  noVehicleText:   { fontSize: 14, fontWeight: "700", color: "#92400e", marginBottom: 4 },
+  noVehicleSub:    { fontSize: 12, color: "#92400e" },
   unitRow:         { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
   unitBtn:         { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: COLOURS.border, backgroundColor: COLOURS.white },
   unitBtnActive:   { backgroundColor: COLOURS.primary, borderColor: COLOURS.primary },
