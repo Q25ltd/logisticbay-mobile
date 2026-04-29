@@ -64,6 +64,7 @@ const tog = StyleSheet.create({
 
 export default function ChecklistScreen({ navigation, route }: Props) {
   const { type, onComplete, returnTo }    = route.params ?? {};
+  const [odometer, setOdometer]           = React.useState("");
   const { currentSegment, updateSegment, updateShiftField } = useShift();
 
   // Save current screen so app can resume here after crash
@@ -111,6 +112,11 @@ export default function ChecklistScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (isTruck && !odometer.trim()) {
+      Alert.alert("Required", "Please enter the odometer reading before completing the check");
+      return;
+    }
+    if (isTruck) updateSegment({ odometerStart: odometer.trim() });
     const hasDefects = items.some(i => i.result === "fail");
 
     const proceed = () => {
@@ -189,6 +195,19 @@ export default function ChecklistScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {isTruck && (
+        <View style={styles.odometerBar}>
+          <Text style={styles.odometerLabel}>📍 Odometer reading (miles)</Text>
+          <TextInput
+            style={styles.odometerInput}
+            value={odometer}
+            onChangeText={setOdometer}
+            placeholder="Enter current mileage"
+            keyboardType="number-pad"
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
+      )}
       <KeyboardAwareScrollView
         style={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -256,6 +275,9 @@ export default function ChecklistScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  odometerBar:   { backgroundColor: "#f8fafc", padding: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+  odometerLabel: { fontSize: 12, fontWeight: "600", color: "#475569", marginBottom: 8 },
+  odometerInput: { borderWidth: 1.5, borderColor: "#cbd5e1", borderRadius: 8, padding: 12, fontSize: 20, fontWeight: "700", color: "#0f172a", textAlign: "center", backgroundColor: "#fff" },
   container:      { flex: 1, backgroundColor: COLOURS.background },
   topBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",

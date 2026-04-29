@@ -23,6 +23,9 @@ export default function ChangeVehicleScreen({ navigation }: { navigation: any })
   const currentClass   = draft?.currentSegment?.vehicleClass ?? "class1";
 
   const [changing,      setChanging]      = useState<"truck"|"trailer"|"both"|null>(null);
+  const [odometerEnd,   setOdometerEnd]   = useState("");
+  const [fuelAdded,     setFuelAdded]     = useState("");
+  const [adBlueAdded,   setAdBlueAdded]   = useState("");
   const [newTruckReg,   setNewTruckReg]   = useState(currentTruck);
   const [newTrailerReg, setNewTrailerReg] = useState(currentTrailer);
   const [newClass,      setNewClass]      = useState<"class1"|"class2"|"van">(currentClass);
@@ -34,6 +37,11 @@ export default function ChangeVehicleScreen({ navigation }: { navigation: any })
     if ((changing === "truck" || changing === "both") && !newTruckReg.trim()) {
       Alert.alert("Required", "Please enter the truck registration"); return;
     }
+
+    // Save last vehicle data
+    if (odometerEnd.trim()) updateSegment({ odometerEnd: odometerEnd.trim() });
+    if (fuelAdded.trim())   updateSegment({ fuelDrawn: fuelAdded.trim() });
+    if (adBlueAdded.trim()) updateSegment({ adBlueDrawn: adBlueAdded.trim() });
 
     const finalTruck   = (changing === "truck"   || changing === "both") ? newTruckReg.trim().toUpperCase()   : currentTruck;
     const finalTrailer = (changing === "trailer" || changing === "both") ? newTrailerReg.trim().toUpperCase() : currentTrailer;
@@ -95,6 +103,40 @@ export default function ChangeVehicleScreen({ navigation }: { navigation: any })
             ? <Text style={styles.currentVehicle}>🚚 {currentTrailer}</Text>
             : <Text style={styles.hint}>No trailer attached</Text>}
         </Card>
+
+        {/* Last vehicle summary */}
+        {currentTruck && (
+          <Card style={{ marginBottom: 12 }}>
+            <Text style={styles.sectionLabel}>Last Vehicle: {currentTruck}</Text>
+            <Text style={styles.fieldLabel}>Odometer end (miles)</Text>
+            <TextInput
+              style={styles.regInput}
+              value={odometerEnd}
+              onChangeText={setOdometerEnd}
+              placeholder="Current mileage reading"
+              keyboardType="number-pad"
+              placeholderTextColor={COLOURS.muted}
+            />
+            <Text style={styles.fieldLabel}>Fuel added (litres)</Text>
+            <TextInput
+              style={styles.regInput}
+              value={fuelAdded}
+              onChangeText={setFuelAdded}
+              placeholder="0"
+              keyboardType="decimal-pad"
+              placeholderTextColor={COLOURS.muted}
+            />
+            <Text style={styles.fieldLabel}>AdBlue added (litres)</Text>
+            <TextInput
+              style={styles.regInput}
+              value={adBlueAdded}
+              onChangeText={setAdBlueAdded}
+              placeholder="0"
+              keyboardType="decimal-pad"
+              placeholderTextColor={COLOURS.muted}
+            />
+          </Card>
+        )}
 
         <Card style={{ marginBottom: 12 }}>
           <Text style={styles.sectionLabel}>What are you changing?</Text>
