@@ -151,7 +151,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <Text style={styles.jobsPreviewMore}>+{jobs.length - 5} more — tap to see all</Text>
                 </TouchableOpacity>
               )}
-              )}
             </>
           )}
         </TouchableOpacity>
