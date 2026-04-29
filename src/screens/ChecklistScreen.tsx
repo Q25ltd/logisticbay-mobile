@@ -110,16 +110,48 @@ export default function ChecklistScreen({ navigation, route }: Props) {
       Alert.alert("Note Required", `Please describe the defect for:\n${missing.label}`);
       return;
     }
-    if (isTruck) updateSegment({ truckChecks: items });
-    else         updateSegment({ trailerChecks: items });
-    if (isTruck) updateSegment({ truckChecks: items });
-    else         updateSegment({ trailerChecks: items });
-    if (onComplete) {
-      onComplete();
-      if (navigation.canGoBack()) navigation.goBack();
+
+    const hasDefects = items.some(i => i.result === "fail");
+
+    const proceed = () => {
+      if (isTruck) updateSegment({ truckChecks: items });
+      else         updateSegment({ trailerChecks: items });
+      if (onComplete) {
+        onComplete();
+        if (navigation.canGoBack()) navigation.goBack();
+      } else {
+        navigation.navigate(getNext());
+      }
+    };
+
+    const goToOffice = () => {
+      if (isTruck) updateSegment({ truckChecks: items });
+      else         updateSegment({ trailerChecks: items });
+      Alert.alert(
+        "Going to Office",
+        "Defects have been recorded. Your shift has started. Please speak with your planner.",
+        [{ text: "OK", onPress: () => {
+          if (onComplete) { onComplete(); }
+          if (navigation.canGoBack()) navigation.goBack();
+          else navigation.navigate("Jobs");
+        }}]
+      );
+    };
+
+    if (hasDefects) {
+      Alert.alert(
+        "Defects Found",
+        `${items.filter(i => i.result === "fail").length} defect(s) noted. Is this vehicle safe to drive?`,
+        [
+          { text: "Yes — safe to proceed", onPress: proceed },
+          { text: "No — going to office", style: "destructive", onPress: goToOffice },
+        ]
+      );
     } else {
-      navigation.navigate(getNext());
+      proceed();
     }
+  }
+
   }
 
   const failCount = items.filter(i => i.result === "fail").length;
