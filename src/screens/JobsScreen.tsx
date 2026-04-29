@@ -146,32 +146,32 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
         <View style={{ width: 60 }} />
       </View>
 
-      {/* Line 2: Truck */}
+      {/* Truck banner */}
       {hasActiveShift && (
         <TouchableOpacity
-          style={styles.vehicleRow}
+          style={styles.truckBanner}
           onPress={() => navigation.navigate("ChangeVehicle", { changeType: "truck" })}
         >
-          <Text style={styles.vehicleRowIcon}>🚛</Text>
-          <Text style={styles.vehicleRowReg}>{draft?.truckReg || "No truck assigned"}</Text>
-          <Text style={styles.vehicleRowChange}>Change →</Text>
+          <Text style={styles.bannerIcon}>🚛</Text>
+          <View>
+            <Text style={styles.bannerReg}>{draft?.truckReg || "No truck assigned"}</Text>
+            <Text style={styles.bannerHint}>tap to change truck</Text>
+          </View>
         </TouchableOpacity>
       )}
-
-      {/* Line 3: Trailer */}
+      {/* Trailer banner */}
       {hasActiveShift && draft?.currentSegment?.vehicleClass !== "van" && (
         <TouchableOpacity
-          style={[styles.vehicleRow, { borderTopWidth: 0 }]}
+          style={styles.trailerBanner}
           onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
         >
-          <Text style={styles.vehicleRowIcon}>🚚</Text>
-          <Text style={styles.vehicleRowReg}>
-            {draft?.currentSegment?.trailerReg || "No trailer"}
-          </Text>
-          <Text style={styles.vehicleRowChange}>Change →</Text>
+          <Text style={styles.bannerIcon}>🚚</Text>
+          <View>
+            <Text style={styles.bannerReg}>{draft?.currentSegment?.trailerReg || "No trailer"}</Text>
+            <Text style={styles.bannerHint}>tap to change trailer</Text>
+          </View>
         </TouchableOpacity>
       )}
-
       {/* Shift status warning */}
       {!hasActiveShift && (
         <View style={styles.noShiftBanner}>
@@ -364,4 +364,9 @@ const styles = StyleSheet.create({
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
   truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 12 },
   truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
+  truckBanner:   { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
+  trailerBanner: { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
+  bannerIcon:    { fontSize: 26 },
+  bannerReg:     { fontSize: 17, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1.5 },
+  bannerHint:    { fontSize: 11, color: COLOURS.muted, marginTop: 2 },
 });
