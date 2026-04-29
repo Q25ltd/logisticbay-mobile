@@ -87,8 +87,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             >
               <Text style={styles.resumeBtnText}>Resume →</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleDiscardDraft}>
-              <Text style={styles.discardText}>Discard</Text>
+            <TouchableOpacity style={styles.discardBtn} onPress={handleDiscardDraft}>
+              <Text style={styles.discardBtnText}>Discard</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -215,6 +215,8 @@ const styles = StyleSheet.create({
   draftActions:     { alignItems: "center", marginLeft: 12 },
   resumeBtn:        { backgroundColor: COLOURS.warning, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, marginBottom: 6 },
   resumeBtnText:    { color: COLOURS.white, fontWeight: "700", fontSize: 13 },
+  discardBtn:     { marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1.5, borderColor: COLOURS.fail, alignItems: "center" },
+  discardBtnText: { fontSize: 13, fontWeight: "700", color: COLOURS.fail },
   discardText:      { color: COLOURS.muted, fontSize: 11 },
 
   content:          { flex: 1, padding: 16 },
