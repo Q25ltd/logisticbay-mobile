@@ -662,7 +662,7 @@ Use assigned trailer?`,
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.endShiftBtn}
-              onPress={() => navigation.navigate("EndShift")}
+              onPress={() => navigation.navigate("Jobs")}
             >
               <Text style={styles.endShiftBtnText}>🏁 No more jobs — End Shift →</Text>
             </TouchableOpacity>
