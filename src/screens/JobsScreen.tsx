@@ -178,8 +178,7 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
             style={styles.endShiftBarBtn}
             onPress={() => navigation.navigate("EndShift")}
           >
-            <Text style={styles.endShiftBarText}>End{"
-"}Shift</Text>
+            <Text style={styles.endShiftBarText}>End Shift</Text>
           </TouchableOpacity>
         </View>
       )}
