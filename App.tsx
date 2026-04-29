@@ -13,6 +13,7 @@ import JobDetailScreen      from "./src/screens/JobDetailScreen";
 import ChangePinScreen      from "./src/screens/ChangePinScreen";
 import NewStartShiftScreen  from "./src/screens/StartShiftScreen";
 import HolidayScreen        from "./src/screens/HolidayScreen";
+import ChangeVehicleScreen  from "./src/screens/ChangeVehicleScreen";
 import { COLOURS } from "./src/components";
 import {
   StartShiftScreen as OldStartShiftScreen,
@@ -74,6 +75,7 @@ function AppNavigator() {
             <Stack.Screen name="Jobs"             component={JobsScreen} />
             <Stack.Screen name="JobDetail"        component={JobDetailScreen} />
             <Stack.Screen name="Holidays"         component={HolidayScreen} />
+            <Stack.Screen name="ChangeVehicle"    component={ChangeVehicleScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
