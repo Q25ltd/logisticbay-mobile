@@ -63,7 +63,7 @@ const tog = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ChecklistScreen({ navigation, route }: Props) {
-  const { type }                          = route.params;
+  const { type, onComplete, returnTo }    = route.params ?? {};
   const { currentSegment, updateSegment, updateShiftField } = useShift();
 
   // Save current screen so app can resume here after crash
@@ -87,7 +87,7 @@ export default function ChecklistScreen({ navigation, route }: Props) {
     if (isTruck && vehicleClass === "class1" && currentSegment.hasTrailer && currentSegment.needsTrailerCheck) {
       return "TrailerChecklist";
     }
-    return "Deliveries";
+    return returnTo ?? "Deliveries";
   }
 
   const [items, setItems] = useState<CheckEntry[]>(existing);
@@ -112,7 +112,14 @@ export default function ChecklistScreen({ navigation, route }: Props) {
     }
     if (isTruck) updateSegment({ truckChecks: items });
     else         updateSegment({ trailerChecks: items });
-    navigation.navigate(getNext());
+    if (isTruck) updateSegment({ truckChecks: items });
+    else         updateSegment({ trailerChecks: items });
+    if (onComplete) {
+      onComplete();
+      if (navigation.canGoBack()) navigation.goBack();
+    } else {
+      navigation.navigate(getNext());
+    }
   }
 
   const failCount = items.filter(i => i.result === "fail").length;
