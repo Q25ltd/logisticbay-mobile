@@ -133,9 +133,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 const dateLabel = isToday ? "Today" : jobDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
                 return (
                   <View key={j.id} style={styles.jobPreviewRow}>
-                    <View style={{ width: 48 }}>
-                      <Text style={styles.jobPreviewDate}>{dateLabel}</Text>
-                    </View>
+                    <Text style={styles.jobPreviewDate}>{dateLabel}</Text>
                     <View style={[styles.jobPreviewDot, {
                       backgroundColor: j.status === "completed" ? "#16a34a" :
                                        j.status === "in_progress" ? "#f59e0b" : "#6b7280"
@@ -148,12 +146,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               })}
               {jobs.length > 5 && (
                 <TouchableOpacity onPress={() => navigation.navigate("Jobs")}>
-                  <Text style={styles.jobsPreviewMore}>+{jobs.length - 5} more — tap to see all</Text>
+                  <Text style={styles.jobsPreviewMore}>+{jobs.length - 5} more</Text>
                 </TouchableOpacity>
               )}
             </>
           )}
-        </TouchableOpacity>
+        </View>
 
         <View style={styles.grid}>
           <TouchableOpacity
