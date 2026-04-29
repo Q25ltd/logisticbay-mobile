@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, SafeAreaView,
   TouchableOpacity, ActivityIndicator, RefreshControl,
-  Modal, TextInput, Alert,
+  Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
@@ -280,8 +280,13 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
       )}
       {/* Last vehicle modal before end shift */}
       <Modal visible={showLastVehicle} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }} keyboardShouldPersistTaps="handled">
+            <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Last Vehicle: {draft?.truckReg || "Unknown"}</Text>
             <Text style={styles.modalSub}>Enter final readings before ending shift</Text>
 
@@ -338,8 +343,10 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
                 <Text style={styles.modalConfirmText}>Continue to End Shift →</Text>
               </TouchableOpacity>
             </View>
+            </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
