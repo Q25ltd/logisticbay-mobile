@@ -149,7 +149,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               {jobs.length > 5 && (
                 <TouchableOpacity onPress={() => navigation.navigate("Jobs")}>
                   <Text style={styles.jobsPreviewMore}>+{jobs.length - 5} more — tap to see all</Text>
-        </View>
+                </TouchableOpacity>
+              )}
               )}
             </>
           )}
