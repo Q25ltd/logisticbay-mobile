@@ -152,11 +152,8 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           style={styles.truckBanner}
           onPress={() => navigation.navigate("ChangeVehicle", { changeType: "truck" })}
         >
-          <Text style={styles.bannerIcon}>🚛</Text>
-          <View>
-            <Text style={styles.bannerReg}>{draft?.truckReg || "No truck assigned"}</Text>
-            <Text style={styles.bannerHint}>tap to change truck</Text>
-          </View>
+          <Text style={styles.bannerReg}>{draft?.truckReg || "No truck assigned"}</Text>
+          <Text style={styles.bannerHint}>tap to change truck</Text>
         </TouchableOpacity>
       )}
       {/* Trailer banner */}
@@ -165,11 +162,8 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           style={styles.trailerBanner}
           onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
         >
-          <Text style={styles.bannerIcon}>🚚</Text>
-          <View>
-            <Text style={styles.bannerReg}>{draft?.currentSegment?.trailerReg || "No trailer"}</Text>
-            <Text style={styles.bannerHint}>tap to change trailer</Text>
-          </View>
+          <Text style={styles.bannerReg}>{draft?.currentSegment?.trailerReg || "No trailer"}</Text>
+          <Text style={styles.bannerHint}>tap to change trailer</Text>
         </TouchableOpacity>
       )}
       {/* Shift status warning */}
@@ -364,9 +358,8 @@ const styles = StyleSheet.create({
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
   truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 12 },
   truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
-  truckBanner:   { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
-  trailerBanner: { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
-  bannerIcon:    { fontSize: 26 },
-  bannerReg:     { fontSize: 17, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1.5 },
-  bannerHint:    { fontSize: 11, color: COLOURS.muted, marginTop: 2 },
+  truckBanner:   { alignItems: "center", backgroundColor: "#f0fdf4", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#86efac" },
+  trailerBanner: { alignItems: "center", backgroundColor: "#eff6ff", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#bfdbfe" },
+  bannerReg:     { fontSize: 18, fontWeight: "900", color: COLOURS.primary, letterSpacing: 2, textAlign: "center" },
+  bannerHint:    { fontSize: 11, color: COLOURS.muted, marginTop: 2, textAlign: "center" },
 });
