@@ -115,32 +115,41 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <Text style={styles.startBtnSub}>Begin your working day</Text>
         </TouchableOpacity>
 
-        {/* Jobs preview — whole card tappable */}
-        <TouchableOpacity style={styles.jobsPreview} onPress={() => navigation.navigate("Jobs")} activeOpacity={0.7}>
+        {/* Jobs preview — read only, all upcoming */}
+        <View style={styles.jobsPreview}>
           <View style={styles.jobsPreviewHeader}>
-            <Text style={styles.jobsPreviewTitle}>📋 Today's Jobs</Text>
-            <Text style={styles.jobsPreviewLink}>Manage →</Text>
+            <Text style={styles.jobsPreviewTitle}>📋 My Upcoming Jobs</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Jobs")}>
+              <Text style={styles.jobsPreviewLink}>View all →</Text>
+            </TouchableOpacity>
           </View>
           {jobs.length === 0 ? (
-            <Text style={styles.jobsPreviewEmpty}>No jobs assigned for today</Text>
+            <Text style={styles.jobsPreviewEmpty}>No jobs assigned yet</Text>
           ) : (
             <>
-              <Text style={styles.jobsPreviewSummary}>
-                {jobs.length} job{jobs.length !== 1 ? "s" : ""} · {pendingJobs} pending · {activeJobs} active
-              </Text>
-              {jobs.slice(0, 2).map((j: any) => (
-                <View key={j.id} style={styles.jobPreviewRow}>
-                  <View style={[styles.jobPreviewDot, {
-                    backgroundColor: j.status === "completed" ? "#16a34a" :
-                                     j.status === "in_progress" ? "#f59e0b" : "#6b7280"
-                  }]} />
-                  <Text style={styles.jobPreviewText} numberOfLines={1}>
-                    {j.pickupTextSnapshot || "—"} → {j.dropoffTextSnapshot || "—"}
-                  </Text>
-                </View>
-              ))}
-              {jobs.length > 2 && (
-                <Text style={styles.jobsPreviewMore}>+{jobs.length - 2} more — tap Manage to see all</Text>
+              {jobs.slice(0, 5).map((j: any) => {
+                const jobDate = new Date(j.scheduledDate || j.createdAt);
+                const isToday = jobDate.toDateString() === new Date().toDateString();
+                const dateLabel = isToday ? "Today" : jobDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+                return (
+                  <View key={j.id} style={styles.jobPreviewRow}>
+                    <View style={{ width: 48 }}>
+                      <Text style={styles.jobPreviewDate}>{dateLabel}</Text>
+                    </View>
+                    <View style={[styles.jobPreviewDot, {
+                      backgroundColor: j.status === "completed" ? "#16a34a" :
+                                       j.status === "in_progress" ? "#f59e0b" : "#6b7280"
+                    }]} />
+                    <Text style={styles.jobPreviewText} numberOfLines={1}>
+                      {j.pickupTextSnapshot || "—"} → {j.dropoffTextSnapshot || "—"}
+                    </Text>
+                  </View>
+                );
+              })}
+              {jobs.length > 5 && (
+                <TouchableOpacity onPress={() => navigation.navigate("Jobs")}>
+                  <Text style={styles.jobsPreviewMore}>+{jobs.length - 5} more — tap to see all</Text>
+                </TouchableOpacity>
               )}
             </>
           )}
@@ -240,6 +249,7 @@ const styles = StyleSheet.create({
   jobsPreviewSummary: { fontSize: 12, color: COLOURS.muted, marginBottom: 8 },
   jobPreviewRow:      { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 8 },
   jobPreviewDot:      { width: 8, height: 8, borderRadius: 4 },
+  jobPreviewDate:  { fontSize: 10, fontWeight: "700", color: COLOURS.accent, width: 44 },
   jobPreviewText:     { fontSize: 13, color: COLOURS.primary, flex: 1 },
   jobsPreviewMore:    { fontSize: 11, color: COLOURS.muted, marginTop: 4, fontStyle: "italic" },
   grid:             { flexDirection: "row", flexWrap: "wrap", gap: 12 },
