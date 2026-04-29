@@ -88,11 +88,14 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
 
   async function loadData() {
     try {
-      const [wtRes, avRes] = await Promise.all([
+      const today = new Date().toISOString().split("T")[0];
+      const [wtRes, avRes, jobsRes] = await Promise.all([
         api.get("/working-time/my"),
         api.get(`/availability/my?weekStart=${weekStart.toISOString()}`),
+        api.get(`/jobs/my?date=${today}`),
       ]);
       setWorkingTime(wtRes.data);
+
       const avail = avRes.data?.data;
       if (avail) {
         const loaded: Record<string, DayPlan> = {};
@@ -101,6 +104,22 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
           loaded[d.key] = { pref, hours: pref === "unavailable" ? 0 : pref === "overtime" ? 10 : 8 };
         });
         setWeekPlan(loaded);
+      }
+
+      // Check if planner assigned a truck via today's jobs
+      const jobs = jobsRes.data ?? [];
+      const assignedTruck   = jobs.find((j: any) => j.assignedTruck)?.assignedTruck   ?? "";
+      const assignedTrailer = jobs.find((j: any) => j.assignedTrailer)?.assignedTrailer ?? "";
+      const assignedClass   = jobs.find((j: any) => j.vehicleClass)?.vehicleClass      ?? "class1";
+
+      if (assignedTruck) {
+        setTruckReg(assignedTruck);
+        setTruckStatus("manual");
+        setVehClass(assignedClass as any);
+      }
+      if (assignedTrailer) {
+        setTrailerReg(assignedTrailer);
+        setTrailerStatus("assigned");
       }
     } catch {}
     setLoading(false);
