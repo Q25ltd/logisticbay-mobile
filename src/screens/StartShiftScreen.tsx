@@ -499,7 +499,6 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
         </Text>
       </ScrollView>
 
-      <AppFooter />
       <View style={styles.bottomNav}>
         <Button
           label={saving ? "Starting..." : canStart || truckStatus === "none" ? "🚛 Start Shift" : "Complete checks first"}
@@ -507,6 +506,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
           loading={saving}
           style={{ backgroundColor: canStart || truckStatus === "none" ? COLOURS.primary : COLOURS.muted }}
         />
+        <AppFooter />
       </View>
 
       {/* Day editor modal */}

@@ -188,6 +188,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <Text style={styles.companyBannerSub}>logistics · transport · delivery</Text>
         </View>
       </View>
+      <AppFooter />
     </SafeAreaView>
   );
 }
