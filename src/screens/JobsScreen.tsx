@@ -288,36 +288,52 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           <View style={styles.modalOverlay}>
             <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }} keyboardShouldPersistTaps="handled">
             <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Last Vehicle: {draft?.truckReg || "Unknown"}</Text>
-            <Text style={styles.modalSub}>Enter final readings before ending shift</Text>
+            <Text style={styles.modalTitle}>
+              {draft?.truckReg ? `Last Vehicle: ${draft.truckReg}` : "End Shift"}
+            </Text>
+            <Text style={styles.modalSub}>
+              {draft?.truckReg
+                ? "Enter final readings before ending shift"
+                : "No vehicle used today — confirm to end shift"}
+            </Text>
 
-            <Text style={styles.modalLabel}>Odometer end (miles)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={lastOdometer}
-              onChangeText={setLastOdometer}
-              placeholder="Current mileage"
-              keyboardType="number-pad"
-              placeholderTextColor="#94a3b8"
-            />
-            <Text style={styles.modalLabel}>Fuel added (litres) — if any</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={lastFuel}
-              onChangeText={setLastFuel}
-              placeholder="0"
-              keyboardType="decimal-pad"
-              placeholderTextColor="#94a3b8"
-            />
-            <Text style={styles.modalLabel}>AdBlue added (litres) — if any</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={lastAdBlue}
-              onChangeText={setLastAdBlue}
-              placeholder="0"
-              keyboardType="decimal-pad"
-              placeholderTextColor="#94a3b8"
-            />
+            {draft?.truckReg ? (
+              <>
+                <Text style={styles.modalLabel}>Odometer end (miles)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={lastOdometer}
+                  onChangeText={setLastOdometer}
+                  placeholder="Current mileage"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#94a3b8"
+                />
+                <Text style={styles.modalLabel}>Fuel added (litres) — if any</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={lastFuel}
+                  onChangeText={setLastFuel}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#94a3b8"
+                />
+                <Text style={styles.modalLabel}>AdBlue added (litres) — if any</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={lastAdBlue}
+                  onChangeText={setLastAdBlue}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#94a3b8"
+                />
+              </>
+            ) : (
+              <View style={{ backgroundColor: "#f0fdf4", borderRadius: 8, padding: 12, marginVertical: 8 }}>
+                <Text style={{ color: "#14532d", fontSize: 13, textAlign: "center" }}>
+                  🟡 Spare driver — shift recorded, no vehicle used
+                </Text>
+              </View>
+            )}
 
             <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
               <TouchableOpacity
@@ -329,14 +345,13 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity
                 style={styles.modalConfirm}
                 onPress={() => {
-                  if (!lastOdometer.trim()) {
+                  if (draft?.truckReg && !lastOdometer.trim()) {
                     Alert.alert("Required", "Please enter the final odometer reading");
                     return;
                   }
-                  // Save to last segment
-                  updateShiftField("odometerEnd", lastOdometer.trim());
-                  if (lastFuel.trim())   updateShiftField("fuelDrawn",   lastFuel.trim());
-                  if (lastAdBlue.trim()) updateShiftField("adBlueDrawn", lastAdBlue.trim());
+                  if (lastOdometer.trim()) updateShiftField("odometerEnd", lastOdometer.trim());
+                  if (lastFuel.trim())     updateShiftField("fuelDrawn",   lastFuel.trim());
+                  if (lastAdBlue.trim())   updateShiftField("adBlueDrawn", lastAdBlue.trim());
                   setShowLastVehicle(false);
                   navigation.navigate("EndShift");
                 }}
