@@ -142,15 +142,47 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           <Text style={styles.backText}>← Home</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle}>My Jobs</Text>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <TouchableOpacity onPress={() => navigation.navigate("ChangeVehicle")}>
-            <Text style={styles.vehicleText}>🚛 Vehicle</Text>
+        <View style={{ width: 60 }} />
+      </View>
+
+      {/* Vehicle bar */}
+      {hasActiveShift && (
+        <View style={styles.vehicleBar}>
+          <TouchableOpacity
+            style={styles.vehicleBarBtn}
+            onPress={() => navigation.navigate("ChangeVehicle", { changeType: "truck" })}
+          >
+            <Text style={styles.vehicleBarIcon}>🚛</Text>
+            <View>
+              <Text style={styles.vehicleBarReg}>{draft?.truckReg || "No truck"}</Text>
+              <Text style={styles.vehicleBarHint}>tap to change</Text>
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("EndShift")}>
-            <Text style={styles.endShiftText}>End Shift</Text>
+
+          {draft?.currentSegment?.vehicleClass !== "van" && (
+            <TouchableOpacity
+              style={[styles.vehicleBarBtn, { borderLeftWidth: 1, borderLeftColor: COLOURS.border }]}
+              onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
+            >
+              <Text style={styles.vehicleBarIcon}>🚚</Text>
+              <View>
+                <Text style={styles.vehicleBarReg}>
+                  {draft?.currentSegment?.trailerReg || "No trailer"}
+                </Text>
+                <Text style={styles.vehicleBarHint}>tap to change</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.endShiftBarBtn}
+            onPress={() => navigation.navigate("EndShift")}
+          >
+            <Text style={styles.endShiftBarText}>End{"
+"}Shift</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      )}
 
       {/* Shift status warning */}
       {!hasActiveShift && (
@@ -161,23 +193,7 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
         </View>
       )}
 
-      {/* Vehicle banners */}
-      {hasActiveShift && !hasTruck && (
-        <TouchableOpacity
-          style={styles.spareBanner}
-          onPress={() => navigation.navigate("ChangeVehicle")}
-        >
-          <Text style={styles.spareBannerText}>🚛 No vehicle yet — tap to add your truck</Text>
-        </TouchableOpacity>
-      )}
-      {hasActiveShift && hasTruck && (
-        <View style={styles.truckBanner}>
-          <Text style={styles.truckBannerText}>🚛 {draft?.truckReg}</Text>
-          {draft?.currentSegment?.trailerReg ? (
-            <Text style={styles.truckBannerText}> + 🚚 {draft.currentSegment.trailerReg}</Text>
-          ) : null}
-        </View>
-      )}
+
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -318,7 +334,14 @@ const styles = StyleSheet.create({
   statusDot:      { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusText:     { fontSize: 12, fontWeight: "700", textTransform: "uppercase" },
   viewOnlyBadge:  { marginLeft: "auto", backgroundColor: "#f3f4f6", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  spareBanner:    { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
+  vehicleBar:      { flexDirection: "row", backgroundColor: COLOURS.white, borderBottomWidth: 1, borderBottomColor: COLOURS.border },
+  vehicleBarBtn:   { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
+  vehicleBarIcon:  { fontSize: 20 },
+  vehicleBarReg:   { fontSize: 14, fontWeight: "800", color: COLOURS.primary, letterSpacing: 0.5 },
+  vehicleBarHint:  { fontSize: 9, color: COLOURS.muted },
+  endShiftBarBtn:  { paddingHorizontal: 14, paddingVertical: 10, backgroundColor: COLOURS.fail, justifyContent: "center", alignItems: "center" },
+  endShiftBarText: { fontSize: 11, fontWeight: "800", color: COLOURS.white, textAlign: "center" },
+  spareBanner:     { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
   truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 16 },
   truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
@@ -329,7 +352,14 @@ const styles = StyleSheet.create({
   metaItem:       { fontSize: 12, color: COLOURS.muted },
   jobNotes:       { fontSize: 12, color: COLOURS.muted, marginTop: 6, fontStyle: "italic" },
   tapHint:        { fontSize: 11, color: COLOURS.muted, marginTop: 8, fontStyle: "italic" },
-  spareBanner:    { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
+  vehicleBar:      { flexDirection: "row", backgroundColor: COLOURS.white, borderBottomWidth: 1, borderBottomColor: COLOURS.border },
+  vehicleBarBtn:   { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
+  vehicleBarIcon:  { fontSize: 20 },
+  vehicleBarReg:   { fontSize: 14, fontWeight: "800", color: COLOURS.primary, letterSpacing: 0.5 },
+  vehicleBarHint:  { fontSize: 9, color: COLOURS.muted },
+  endShiftBarBtn:  { paddingHorizontal: 14, paddingVertical: 10, backgroundColor: COLOURS.fail, justifyContent: "center", alignItems: "center" },
+  endShiftBarText: { fontSize: 11, fontWeight: "800", color: COLOURS.white, textAlign: "center" },
+  spareBanner:     { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
   truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 12 },
   truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
