@@ -276,11 +276,11 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
 
           {/* Truck */}
           <Text style={styles.fieldLabel}>Truck</Text>
+          {/* Show assigned truck or entry options */}
           <View style={styles.btnRow}>
             {[
-              { key: "none",     label: "Spare / No truck yet" },
-              { key: "assigned", label: "Assigned by planner" },
-              { key: "manual",   label: "I know my truck" },
+              { key: "none",   label: "Spare / No truck yet" },
+              { key: "manual", label: "Enter my truck" },
             ].map(o => (
               <TouchableOpacity
                 key={o.key}
