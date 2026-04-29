@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, SafeAreaView,
   TouchableOpacity, ActivityIndicator, RefreshControl,
+  Modal, TextInput, Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
