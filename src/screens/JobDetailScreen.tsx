@@ -104,6 +104,27 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
 
     // Require vehicle confirmation before starting job
     if ((job.status === "pending" || job.status === "accepted") && !vehicleConfirmed) {
+      // Check if job has a different trailer than current
+      const currentTrailer = draft?.currentSegment?.trailerReg ?? "";
+      const jobTrailer     = job.assignedTrailer ?? "";
+      if (jobTrailer && jobTrailer !== currentTrailer) {
+        // Different trailer - need to confirm
+        Alert.alert(
+          "Trailer Change",
+          `This job has trailer ${jobTrailer} assigned.
+You currently have: ${currentTrailer || "no trailer"}
+
+Use assigned trailer?`,
+          [
+            { text: "Yes - use assigned", onPress: () => {
+              setTrailerReg(jobTrailer);
+              setShowVehicleForm(true);
+            }},
+            { text: "Keep current trailer", onPress: () => setShowVehicleForm(true) },
+          ]
+        );
+        return;
+      }
       setShowVehicleForm(true);
       return;
     }
@@ -634,10 +655,16 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
               <Text style={styles.completedText}>✅ Job Delivered — well done!</Text>
             </View>
             <TouchableOpacity
+              style={styles.nextJobBtn}
+              onPress={() => navigation.navigate("Jobs")}
+            >
+              <Text style={styles.nextJobBtnText}>📋 Back to Jobs →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.endShiftBtn}
               onPress={() => navigation.navigate("EndShift")}
             >
-              <Text style={styles.endShiftBtnText}>🏁 Finished for the day? End Shift →</Text>
+              <Text style={styles.endShiftBtnText}>🏁 No more jobs — End Shift →</Text>
             </TouchableOpacity>
           </View>
         ) : job.status === "cancelled" ? (
@@ -707,7 +734,9 @@ const styles = StyleSheet.create({
   assignedVehicleBanner: { backgroundColor: "#dcfce7", borderRadius: 8, padding: 12, marginBottom: 12 },
   assignedVehicleLabel:  { fontSize: 11, color: "#14532d", fontWeight: "700", marginBottom: 4 },
   assignedVehicleReg:    { fontSize: 20, fontWeight: "900", color: "#14532d", letterSpacing: 1 },
-  endShiftBtn:     { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
+  nextJobBtn:       { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.accent, alignItems: "center" },
+  nextJobBtnText:   { fontSize: 14, fontWeight: "700", color: COLOURS.white },
+  endShiftBtn:      { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
   endShiftBtnText: { fontSize: 14, fontWeight: "700", color: COLOURS.white },
   formInfo:        { fontSize: 14, color: COLOURS.primary, marginBottom: 12, padding: 10, backgroundColor: COLOURS.background, borderRadius: 8 },
   vehicleRow:      { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },

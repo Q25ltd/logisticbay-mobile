@@ -70,7 +70,10 @@ export default function ChangeVehicleScreen({ navigation }: { navigation: any })
         })}]
       );
     } else {
-      navigation.goBack();
+      // No check needed - vehicle updated, go back to jobs
+      Alert.alert("✅ Vehicle Updated", `Now using: ${finalTruck}${finalTrailer ? " + " + finalTrailer : ""}`, [
+        { text: "OK", onPress: () => navigation.navigate("Jobs") }
+      ]);
     }
   }
 

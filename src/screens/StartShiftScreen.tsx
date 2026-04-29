@@ -381,10 +381,9 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
 
             <View style={styles.btnRow}>
               {[
-                { key: "solo",     label: "Solo (no trailer)" },
-                { key: "assigned", label: "Assigned trailer" },
-                { key: "yard",     label: "Picking from yard" },
-                { key: "other",    label: "Subcontract / other" },
+                { key: "solo",  label: "Solo (no trailer)" },
+                { key: "yard",  label: "Enter trailer reg" },
+                { key: "other", label: "Subcontract / unknown" },
               ].map(o => (
                 <TouchableOpacity
                   key={o.key}
