@@ -100,6 +100,10 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
   const { draft, draftRestored, updateShiftField } = useShift() as any;
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const hasTruck = !!(draft?.truckReg);
+  const [showLastVehicle, setShowLastVehicle] = useState(false);
+  const [lastOdometer,    setLastOdometer]    = useState("");
+  const [lastFuel,        setLastFuel]        = useState("");
+  const [lastAdBlue,      setLastAdBlue]      = useState("");
 
   useEffect(() => {
     if (hasActiveShift) updateShiftField("lastScreen", "Jobs");
@@ -267,12 +271,75 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
       {hasActiveShift && (
         <TouchableOpacity
           style={styles.endShiftBottom}
-          onPress={() => navigation.navigate("EndShift")}
+          onPress={() => setShowLastVehicle(true)}
         >
           <Text style={styles.endShiftBottomText}>✅ Shift Complete — End Shift</Text>
           <Text style={styles.endShiftBottomSub}>Enjoy your rest! 🎉</Text>
         </TouchableOpacity>
       )}
+      {/* Last vehicle modal before end shift */}
+      <Modal visible={showLastVehicle} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Last Vehicle: {draft?.truckReg || "Unknown"}</Text>
+            <Text style={styles.modalSub}>Enter final readings before ending shift</Text>
+
+            <Text style={styles.modalLabel}>Odometer end (miles)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={lastOdometer}
+              onChangeText={setLastOdometer}
+              placeholder="Current mileage"
+              keyboardType="number-pad"
+              placeholderTextColor="#94a3b8"
+            />
+            <Text style={styles.modalLabel}>Fuel added (litres) — if any</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={lastFuel}
+              onChangeText={setLastFuel}
+              placeholder="0"
+              keyboardType="decimal-pad"
+              placeholderTextColor="#94a3b8"
+            />
+            <Text style={styles.modalLabel}>AdBlue added (litres) — if any</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={lastAdBlue}
+              onChangeText={setLastAdBlue}
+              placeholder="0"
+              keyboardType="decimal-pad"
+              placeholderTextColor="#94a3b8"
+            />
+
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowLastVehicle(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={() => {
+                  if (!lastOdometer.trim()) {
+                    Alert.alert("Required", "Please enter the final odometer reading");
+                    return;
+                  }
+                  // Save to last segment
+                  updateShiftField("odometerEnd", lastOdometer.trim());
+                  if (lastFuel.trim())   updateShiftField("fuelDrawn",   lastFuel.trim());
+                  if (lastAdBlue.trim()) updateShiftField("adBlueDrawn", lastAdBlue.trim());
+                  setShowLastVehicle(false);
+                  navigation.navigate("EndShift");
+                }}
+              >
+                <Text style={styles.modalConfirmText}>Continue to End Shift →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -332,6 +399,16 @@ const styles = StyleSheet.create({
   truckBannerIcon:   { fontSize: 24 },
   truckBannerReg:    { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
   truckBannerHint:   { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
+  modalOverlay:      { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalSheet:        { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  modalTitle:        { fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
+  modalSub:          { fontSize: 13, color: "#64748b", marginBottom: 16 },
+  modalLabel:        { fontSize: 12, fontWeight: "600", color: "#0f172a", marginBottom: 6, marginTop: 10 },
+  modalInput:        { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 8, padding: 12, fontSize: 18, fontWeight: "700", color: "#0f172a", textAlign: "center" },
+  modalCancel:       { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: "#e2e8f0", alignItems: "center" },
+  modalCancelText:   { fontSize: 14, fontWeight: "600", color: "#64748b" },
+  modalConfirm:      { flex: 2, padding: 14, borderRadius: 10, backgroundColor: "#16a34a", alignItems: "center" },
+  modalConfirmText:  { fontSize: 14, fontWeight: "700", color: "#fff" },
   endShiftBottom:    { backgroundColor: "#16a34a", padding: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "#15803d" },
   endShiftBottomText:{ fontSize: 16, fontWeight: "800", color: COLOURS.white },
   endShiftBottomSub: { fontSize: 12, color: "#bbf7d0", marginTop: 2 },
@@ -351,6 +428,16 @@ const styles = StyleSheet.create({
   truckBannerIcon:   { fontSize: 24 },
   truckBannerReg:    { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
   truckBannerHint:   { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
+  modalOverlay:      { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalSheet:        { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  modalTitle:        { fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
+  modalSub:          { fontSize: 13, color: "#64748b", marginBottom: 16 },
+  modalLabel:        { fontSize: 12, fontWeight: "600", color: "#0f172a", marginBottom: 6, marginTop: 10 },
+  modalInput:        { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 8, padding: 12, fontSize: 18, fontWeight: "700", color: "#0f172a", textAlign: "center" },
+  modalCancel:       { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: "#e2e8f0", alignItems: "center" },
+  modalCancelText:   { fontSize: 14, fontWeight: "600", color: "#64748b" },
+  modalConfirm:      { flex: 2, padding: 14, borderRadius: 10, backgroundColor: "#16a34a", alignItems: "center" },
+  modalConfirmText:  { fontSize: 14, fontWeight: "700", color: "#fff" },
   endShiftBottom:    { backgroundColor: "#16a34a", padding: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "#15803d" },
   endShiftBottomText:{ fontSize: 16, fontWeight: "800", color: COLOURS.white },
   endShiftBottomSub: { fontSize: 12, color: "#bbf7d0", marginTop: 2 },
