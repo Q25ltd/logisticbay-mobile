@@ -339,8 +339,7 @@ export function EndShiftScreen({ navigation }: { navigation: any }) {
     updateShiftField("expenses",    expenses);
     updateShiftField("delaysNote",  delays);
     updateShiftField("defectsNote", defects);
-    updateShiftField("fuelDrawn",   fuelDrawn);
-    updateShiftField("adBlueDrawn", adBlue);
+    // fuel/adBlue already saved per segment at vehicle change
     updateShiftField("finishTime",  formatted);
     updateShiftField("breakMins",   breakNum);
     updateShiftField("totalHours",  hours.paidStr);
@@ -442,18 +441,33 @@ export function EndShiftScreen({ navigation }: { navigation: any }) {
           </Card>
 
           <Card>
-            <View style={styles.rowBetween}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.fieldLabel}>Fuel Drawn</Text>
-                <TextInput style={styles.input} value={fuelDrawn} onChangeText={setFuelDrawn}
-                  placeholder="e.g. 200L or none" placeholderTextColor={COLOURS.muted} />
+            {/* Calculated totals from all segments */}
+            <Text style={styles.fieldLabel}>Shift Totals</Text>
+            <View style={styles.totalsGrid}>
+              <View style={styles.totalItem}>
+                <Text style={styles.totalValue}>{totalMileage > 0 ? `${totalMileage.toLocaleString()}` : "—"}</Text>
+                <Text style={styles.totalLabel}>Miles</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>AdBlue</Text>
-                <TextInput style={styles.input} value={adBlue} onChangeText={setAdBlue}
-                  placeholder="e.g. 20L or none" placeholderTextColor={COLOURS.muted} />
+              <View style={styles.totalDivider} />
+              <View style={styles.totalItem}>
+                <Text style={styles.totalValue}>
+                  {draft.segments.reduce((s: number, seg: any) => s + (parseFloat(seg.fuelDrawn) || 0), 0) > 0
+                    ? `${draft.segments.reduce((s: number, seg: any) => s + (parseFloat(seg.fuelDrawn) || 0), 0)}L`
+                    : "—"}
+                </Text>
+                <Text style={styles.totalLabel}>Fuel</Text>
+              </View>
+              <View style={styles.totalDivider} />
+              <View style={styles.totalItem}>
+                <Text style={styles.totalValue}>
+                  {draft.segments.reduce((s: number, seg: any) => s + (parseFloat(seg.adBlueDrawn) || 0), 0) > 0
+                    ? `${draft.segments.reduce((s: number, seg: any) => s + (parseFloat(seg.adBlueDrawn) || 0), 0)}L`
+                    : "—"}
+                </Text>
+                <Text style={styles.totalLabel}>AdBlue</Text>
               </View>
             </View>
+            <Text style={styles.totalsHint}>Recorded at each vehicle change · tap to correct</Text>
 
             <View style={styles.rowBetween}>
               <View>
@@ -463,13 +477,6 @@ export function EndShiftScreen({ navigation }: { navigation: any }) {
               <Switch value={nightOut} onValueChange={setNightOut}
                 trackColor={{ false: COLOURS.border, true: COLOURS.primary }} thumbColor={COLOURS.white} />
             </View>
-
-            {totalMileage > 0 && (
-              <View style={styles.mileageSummary}>
-                <Text style={styles.mileageSummaryLabel}>Total Mileage Today</Text>
-                <Text style={styles.mileageSummaryValue}>{totalMileage.toLocaleString()} km</Text>
-              </View>
-            )}
           </Card>
 
           <Card>
@@ -788,6 +795,12 @@ const styles = StyleSheet.create({
   paidResultMinus:{ color: "rgba(255,255,255,0.3)", fontSize: 16, marginHorizontal: 2 },
 
   // Mileage summary
+  totalsGrid:      { flexDirection: "row", alignItems: "center", marginVertical: 8 },
+  totalItem:       { flex: 1, alignItems: "center" },
+  totalValue:      { fontSize: 22, fontWeight: "900", color: COLOURS.primary },
+  totalLabel:      { fontSize: 11, color: COLOURS.muted, marginTop: 2, textTransform: "uppercase" },
+  totalDivider:    { width: 1, height: 40, backgroundColor: COLOURS.border },
+  totalsHint:      { fontSize: 11, color: COLOURS.muted, fontStyle: "italic", textAlign: "center", marginBottom: 12 },
   mileageSummary:      { backgroundColor: COLOURS.background, borderRadius: 8, padding: 10, marginTop: 8, alignItems: "center" },
   mileageSummaryLabel: { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase" },
   mileageSummaryValue: { fontSize: 20, fontWeight: "800", color: COLOURS.primary },
