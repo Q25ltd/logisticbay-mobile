@@ -277,8 +277,8 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
           <Text style={styles.endShiftBottomText}>✅ Shift Complete — End Shift</Text>
           <Text style={styles.endShiftBottomSub}>Enjoy your rest! 🎉</Text>
         </TouchableOpacity>
-      <AppFooter />
       )}
+      <AppFooter />
       {/* Last vehicle modal before end shift */}
       <Modal visible={showLastVehicle} animationType="slide" transparent>
         <KeyboardAvoidingView
