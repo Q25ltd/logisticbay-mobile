@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { useAuth } from "../AuthContext";
 import { useShift } from "../ShiftContext";
-import { COLOURS } from "../components";
+import { COLOURS, AppFooter } from "../components";
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
   const { user, logout, mustChangePin } = useAuth();

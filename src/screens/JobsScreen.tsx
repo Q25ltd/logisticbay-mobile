@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
-import { COLOURS, Card } from "../components";
+import { COLOURS, AppFooter, Card } from "../components";
 import { useShift } from "../ShiftContext";
 
 interface Job {
@@ -268,6 +268,7 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
         />
       )}
 
+      <AppFooter />
       {/* Bottom: End Shift */}
       {hasActiveShift && (
         <TouchableOpacity

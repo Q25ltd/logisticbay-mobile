@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import { api } from "../api";
-import { COLOURS, Button, Card } from "../components";
+import { COLOURS, AppFooter, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 
 const DAYS = [
@@ -499,6 +499,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
         </Text>
       </ScrollView>
 
+      <AppFooter />
       <View style={styles.bottomNav}>
         <Button
           label={saving ? "Starting..." : canStart || truckStatus === "none" ? "🚛 Start Shift" : "Complete checks first"}
