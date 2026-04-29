@@ -58,12 +58,16 @@ export default function ChangeVehicleScreen({ navigation }: { navigation: any })
     if (truckChanged) {
       Alert.alert("Truck Check Required",
         `You must complete a check for ${finalTruck} before continuing.`,
-        [{ text: "Do Check Now", onPress: () => navigation.replace("TruckChecklist", { truckReg: finalTruck }) }]
+        [{ text: "Do Check Now", onPress: () => navigation.navigate("TruckChecklist", {
+          type: "truck", returnTo: "Jobs",
+        })}]
       );
     } else if (trailerChanged && finalTrailer) {
       Alert.alert("Trailer Check Required",
         `You must complete a check for ${finalTrailer} before continuing.`,
-        [{ text: "Do Check Now", onPress: () => navigation.replace("TrailerChecklist", { trailerReg: finalTrailer }) }]
+        [{ text: "Do Check Now", onPress: () => navigation.navigate("TrailerChecklist", {
+          type: "trailer", returnTo: "Jobs",
+        })}]
       );
     } else {
       navigation.goBack();

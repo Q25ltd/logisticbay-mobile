@@ -334,7 +334,8 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                   <TouchableOpacity
                     style={styles.checkBtn}
                     onPress={() => navigation.navigate("TruckChecklist", {
-                      truckReg: truckReg.toUpperCase(),
+                      type: "truck",
+                      returnTo: "StartShift",
                       onComplete: () => setTruckChecked(true),
                     })}
                   >
@@ -401,7 +402,8 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                     <TouchableOpacity
                       style={styles.checkBtn}
                       onPress={() => navigation.navigate("TrailerChecklist", {
-                        trailerReg: trailerReg.toUpperCase(),
+                        type: "trailer",
+                        returnTo: "StartShift",
                         onComplete: () => setTrailerChecked(true),
                       })}
                     >
@@ -584,9 +586,6 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
     </SafeAreaView>
   );
 }
-
-// Need ScrollView for hours
-import { ScrollView } from "react-native";
 
 const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: COLOURS.background },
