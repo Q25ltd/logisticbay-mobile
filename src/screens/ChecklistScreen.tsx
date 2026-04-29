@@ -150,7 +150,6 @@ export default function ChecklistScreen({ navigation, route }: Props) {
     } else {
       proceed();
     }
-  }
 
   }
 
