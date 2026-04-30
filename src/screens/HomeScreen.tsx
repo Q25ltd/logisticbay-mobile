@@ -6,8 +6,9 @@ import {
 import { useAuth } from "../AuthContext";
 import { useShift } from "../ShiftContext";
 import { COLOURS, AppFooter } from "../components";
+import type { HomeScreenProps } from "../navigation/types";
 
-export default function HomeScreen({ navigation }: { navigation: any }) {
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user, logout, mustChangePin } = useAuth();
 
   React.useEffect(() => {
@@ -15,7 +16,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       navigation.navigate("ChangePin", { forced: true });
     }
   }, [mustChangePin]);
-  const { draft, resetDraft, draftRestored } = useShift() as any;
+  const { draft, resetDraft, draftRestored } = useShift();
   const [jobs, setJobs] = React.useState<any[]>([]);
 
   React.useEffect(() => {
@@ -82,7 +83,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
                 // If finish time not entered yet, don't go to Review
                 const screen = (!hasFinishTime && rawScreen === "Review") ? "EndShift" : rawScreen;
-                navigation.navigate(screen);
+                navigation.navigate(screen as any);
               }}
             >
               <Text style={styles.resumeBtnText}>Resume →</Text>

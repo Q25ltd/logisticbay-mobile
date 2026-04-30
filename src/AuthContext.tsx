@@ -3,11 +3,12 @@ import { api, saveTokens, clearTokens, getAccessToken } from "./api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
-  id:        number;
-  name:      string;
-  email:     string;
-  role:      string;
-  companyId: number;
+  id:          number;
+  name:        string;
+  email:       string;
+  role:        string;
+  companyId:   number;
+  companyName: string;
 }
 
 interface AuthContextType {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  async function login(email: string, password: string, companyId?: number): Promise<any> {
+  async function login(email: string, password: string, companyId?: number): Promise<boolean | { requiresCompanySelection: true; companies: Array<{ companyId: number; companyName: string; role: string }>; user: { id: number; name: string; email: string } }> {
     const res = await api.post("/auth/login", { email, password, ...(companyId ? { companyId } : {}) });
     if (res.data.requiresCompanySelection) return res.data;
     await saveTokens(res.data.accessToken, res.data.refreshToken);

@@ -113,6 +113,7 @@ function emptyDraft(): ShiftDraft {
 
 interface ShiftContextType {
   draft:            ShiftDraft;
+  draftRestored:    boolean;
   currentSegment:   Segment;
   setDraft:         (d: ShiftDraft) => void;
   updateShiftField: (field: keyof ShiftDraft, value: any) => void;
