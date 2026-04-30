@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
+import type { ChangeVehicleScreenProps } from "../navigation/types";
 
 const CHANGE_REASONS = [
   "Truck damaged / defect found",
@@ -15,12 +16,12 @@ const CHANGE_REASONS = [
   "Other",
 ];
 
-export default function ChangeVehicleScreen({ navigation }: { navigation: any }) {
-  const { draft, updateShiftField, updateSegment, setVehicleClass } = useShift() as any;
+export default function ChangeVehicleScreen({ navigation }: ChangeVehicleScreenProps) {
+  const { draft, currentSegment, updateShiftField, updateSegment, setVehicleClass } = useShift();
 
-  const currentTruck   = draft?.truckReg ?? "";
-  const currentTrailer = draft?.currentSegment?.trailerReg ?? "";
-  const currentClass   = draft?.currentSegment?.vehicleClass ?? "class1";
+  const currentTruck   = currentSegment?.truckReg ?? "";
+  const currentTrailer = currentSegment?.trailerReg ?? "";
+  const currentClass   = currentSegment?.vehicleClass ?? "class1";
 
   const [changing,      setChanging]      = useState<"truck"|"trailer"|"both"|null>(null);
   const [odometerEnd,   setOdometerEnd]   = useState("");

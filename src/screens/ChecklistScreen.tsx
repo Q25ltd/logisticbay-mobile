@@ -7,11 +7,9 @@ import {
 import { COLOURS, Button } from "../components";
 import { useShift, type CheckEntry, type CheckResult } from "../ShiftContext";
 import { getChecksForClass } from "../constants";
+import type { TruckChecklistScreenProps } from "../navigation/types";
 
-interface Props {
-  navigation: any;
-  route: { params: { type: "truck" | "trailer" } };
-}
+type Props = TruckChecklistScreenProps;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Three-state toggle: PASS / N/A / FAIL
@@ -126,7 +124,7 @@ export default function ChecklistScreen({ navigation, route }: Props) {
         onComplete();
         if (navigation.canGoBack()) navigation.goBack();
       } else {
-        navigation.navigate(getNext());
+        navigation.navigate(getNext() as any);
       }
     };
 

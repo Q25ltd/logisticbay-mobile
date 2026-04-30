@@ -8,6 +8,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
 import { COLOURS, AppFooter, Card } from "../components";
 import { useShift } from "../ShiftContext";
+import type { JobsScreenProps } from "../navigation/types";
 
 interface Job {
   id:                  number;
@@ -91,14 +92,14 @@ function JobCard({ item, onPress, viewOnly }: { item: Job; onPress: () => void; 
   );
 }
 
-export default function JobsScreen({ navigation }: { navigation: any }) {
+export default function JobsScreen({ navigation }: JobsScreenProps) {
   const [todayJobs,    setTodayJobs]    = useState<Job[]>([]);
   const [upcomingJobs, setUpcomingJobs] = useState<Job[]>([]);
   const [tab,          setTab]          = useState<"today" | "upcoming">("today");
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
-  const { draft, draftRestored, updateShiftField } = useShift() as any;
+  const { draft, currentSegment, draftRestored, updateShiftField } = useShift();
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const hasTruck = !!(draft?.truckReg);
   const [showLastVehicle, setShowLastVehicle] = useState(false);
@@ -162,12 +163,12 @@ export default function JobsScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       )}
       {/* Trailer banner */}
-      {hasActiveShift && draft?.currentSegment?.vehicleClass !== "van" && (
+      {hasActiveShift && currentSegment?.vehicleClass !== "van" && (
         <TouchableOpacity
           style={styles.trailerBanner}
           onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
         >
-          <Text style={styles.bannerReg}>{draft?.currentSegment?.trailerReg || "No trailer"}</Text>
+          <Text style={styles.bannerReg}>{currentSegment?.trailerReg || "No trailer"}</Text>
           <Text style={styles.bannerHint}>tap to change trailer</Text>
         </TouchableOpacity>
       )}
@@ -418,28 +419,6 @@ const styles = StyleSheet.create({
   statusDot:      { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusText:     { fontSize: 12, fontWeight: "700", textTransform: "uppercase" },
   viewOnlyBadge:  { marginLeft: "auto", backgroundColor: "#f3f4f6", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  truckBanner:       { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
-  trailerBanner:     { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
-  truckBannerIcon:   { fontSize: 24 },
-  truckBannerReg:    { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
-  truckBannerHint:   { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
-  modalOverlay:      { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalSheet:        { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle:        { fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
-  modalSub:          { fontSize: 13, color: "#64748b", marginBottom: 16 },
-  modalLabel:        { fontSize: 12, fontWeight: "600", color: "#0f172a", marginBottom: 6, marginTop: 10 },
-  modalInput:        { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 8, padding: 12, fontSize: 18, fontWeight: "700", color: "#0f172a", textAlign: "center" },
-  modalCancel:       { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: "#e2e8f0", alignItems: "center" },
-  modalCancelText:   { fontSize: 14, fontWeight: "600", color: "#64748b" },
-  modalConfirm:      { flex: 2, padding: 14, borderRadius: 10, backgroundColor: "#16a34a", alignItems: "center" },
-  modalConfirmText:  { fontSize: 14, fontWeight: "700", color: "#fff" },
-  endShiftBottom:    { backgroundColor: "#16a34a", padding: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "#15803d" },
-  endShiftBottomText:{ fontSize: 16, fontWeight: "800", color: COLOURS.white },
-  endShiftBottomSub: { fontSize: 12, color: "#bbf7d0", marginTop: 2 },
-  spareBanner:     { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
-  spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
-  truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 16 },
-  truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
   viewOnlyText:   { fontSize: 9, fontWeight: "700", color: COLOURS.muted },
   jobRoute:       { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
   jobArrow:       { fontSize: 16, color: COLOURS.muted, marginVertical: 2, marginLeft: 4 },
@@ -447,30 +426,27 @@ const styles = StyleSheet.create({
   metaItem:       { fontSize: 12, color: COLOURS.muted },
   jobNotes:       { fontSize: 12, color: COLOURS.muted, marginTop: 6, fontStyle: "italic" },
   tapHint:        { fontSize: 11, color: COLOURS.muted, marginTop: 8, fontStyle: "italic" },
-  truckBanner:       { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
-  trailerBanner:     { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
-  truckBannerIcon:   { fontSize: 24 },
-  truckBannerReg:    { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
-  truckBannerHint:   { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
-  modalOverlay:      { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalSheet:        { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle:        { fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
-  modalSub:          { fontSize: 13, color: "#64748b", marginBottom: 16 },
-  modalLabel:        { fontSize: 12, fontWeight: "600", color: "#0f172a", marginBottom: 6, marginTop: 10 },
-  modalInput:        { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 8, padding: 12, fontSize: 18, fontWeight: "700", color: "#0f172a", textAlign: "center" },
-  modalCancel:       { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: "#e2e8f0", alignItems: "center" },
-  modalCancelText:   { fontSize: 14, fontWeight: "600", color: "#64748b" },
-  modalConfirm:      { flex: 2, padding: 14, borderRadius: 10, backgroundColor: "#16a34a", alignItems: "center" },
-  modalConfirmText:  { fontSize: 14, fontWeight: "700", color: "#fff" },
-  endShiftBottom:    { backgroundColor: "#16a34a", padding: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "#15803d" },
-  endShiftBottomText:{ fontSize: 16, fontWeight: "800", color: COLOURS.white },
-  endShiftBottomSub: { fontSize: 12, color: "#bbf7d0", marginTop: 2 },
-  spareBanner:     { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
+  truckBanner:    { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
+  trailerBanner:  { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
+  truckBannerIcon:  { fontSize: 24 },
+  truckBannerReg:   { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
+  truckBannerHint:  { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
+  truckBannerText:  { fontSize: 13, fontWeight: "700", color: "#14532d" },
+  bannerReg:      { fontSize: 18, fontWeight: "900", color: COLOURS.primary, letterSpacing: 2, textAlign: "center" },
+  bannerHint:     { fontSize: 11, color: COLOURS.muted, marginTop: 2, textAlign: "center" },
+  spareBanner:    { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
-  truckBanner:    { backgroundColor: "#f0fdf4", padding: 8, borderBottomWidth: 1, borderBottomColor: "#86efac", flexDirection: "row", justifyContent: "center", gap: 12 },
-  truckBannerText:{ fontSize: 13, fontWeight: "700", color: "#14532d" },
-  truckBanner:   { alignItems: "center", backgroundColor: "#f0fdf4", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#86efac" },
-  trailerBanner: { alignItems: "center", backgroundColor: "#eff6ff", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#bfdbfe" },
-  bannerReg:     { fontSize: 18, fontWeight: "900", color: COLOURS.primary, letterSpacing: 2, textAlign: "center" },
-  bannerHint:    { fontSize: 11, color: COLOURS.muted, marginTop: 2, textAlign: "center" },
+  modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalSheet:     { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  modalTitle:     { fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
+  modalSub:       { fontSize: 13, color: "#64748b", marginBottom: 16 },
+  modalLabel:     { fontSize: 12, fontWeight: "600", color: "#0f172a", marginBottom: 6, marginTop: 10 },
+  modalInput:     { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 8, padding: 12, fontSize: 18, fontWeight: "700", color: "#0f172a", textAlign: "center" },
+  modalCancel:    { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: "#e2e8f0", alignItems: "center" },
+  modalCancelText:{ fontSize: 14, fontWeight: "600", color: "#64748b" },
+  modalConfirm:   { flex: 2, padding: 14, borderRadius: 10, backgroundColor: "#16a34a", alignItems: "center" },
+  modalConfirmText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  endShiftBottom:   { backgroundColor: "#16a34a", padding: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "#15803d" },
+  endShiftBottomText: { fontSize: 16, fontWeight: "800", color: COLOURS.white },
+  endShiftBottomSub:  { fontSize: 12, color: "#bbf7d0", marginTop: 2 },
 });

@@ -8,6 +8,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLOURS, Button, Card, SectionHeader } from "../components";
 import { useShift } from "../ShiftContext";
+import type { Segment } from "../ShiftContext";
 import { VEHICLE_CLASSES, type VehicleClass } from "../constants";
 import { api } from "../api";
 
@@ -313,7 +314,7 @@ export function EndShiftScreen({ navigation }: { navigation: any }) {
   const hours     = calcPaidHours(startTime, finishTime, breakNum);
 
   // Only count mileage for truck changes — trailer changes share same truck odometer
-  const totalMileage = draft.segments.reduce((sum, s) => {
+  const totalMileage = draft.segments.reduce((sum: number, s: Segment) => {
     if (s.odometerEnd && s.odometerStart) {
       const diff = parseInt(s.odometerEnd) - parseInt(s.odometerStart);
       return diff > 0 ? sum + diff : sum;
@@ -518,14 +519,14 @@ export function ReviewScreen({ navigation }: { navigation: any }) {
   const failedChecks = allChecks.filter((c: any) => c.result === "fail" || c.ok === false);
 
   // Only count mileage for truck changes — trailer changes share same truck odometer
-  const totalMileage = draft.segments.reduce((sum, s) => {
+  const totalMileage = draft.segments.reduce((sum: number, s: Segment) => {
     if (s.odometerEnd && s.odometerStart) {
       const diff = parseInt(s.odometerEnd) - parseInt(s.odometerStart);
       return diff > 0 ? sum + diff : sum;
     }
     return sum;
   }, 0);
-  const totalJobs   = draft.segments.reduce((sum, s) => sum + s.deliveries.length, 0);
+  const totalJobs   = draft.segments.reduce((sum: number, s: Segment) => sum + s.deliveries.length, 0);
 
   const startTime   = (draft as any).startTime   ?? "";
   const finishTime  = (draft as any).finishTime  ?? "";

@@ -205,7 +205,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
       if (warnings.length > 0) {
         await new Promise<void>(resolve => {
           Alert.alert("Working Time Notice", warnings.join("\n\n"),
-            [{ text: "I understand", onPress: resolve }]
+            [{ text: "I understand", onPress: () => { resolve(); } }]
           );
         });
       }

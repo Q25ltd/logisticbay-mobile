@@ -34,6 +34,8 @@ export interface Segment {
   needsTrailerCheck: boolean;
   odometerStart:    string;
   odometerEnd:      string;
+  fuelDrawn:        string;
+  adBlueDrawn:      string;
   truckChecks:      CheckEntry[];
   trailerChecks:    CheckEntry[];
   deliveries:       DeliveryEntry[];
@@ -53,6 +55,8 @@ export interface ShiftDraft {
   totalMins:       number;
   fuelDrawn:       string;
   adBlueDrawn:     string;
+  odometerEnd:     string;
+  truckReg:        string;
   segments:        Segment[];
   nightOut:        boolean;
   expenses:        string;
@@ -80,6 +84,8 @@ function newSegment(
     needsTrailerCheck: vehicleClass === "class1" ? needsTrailerCheck : false,
     odometerStart:    "",
     odometerEnd:      "",
+    fuelDrawn:        "",
+    adBlueDrawn:      "",
     truckChecks:      needsTruckCheck ? buildChecklist(getChecksForClass(vehicleClass, "truck")) : [],
     trailerChecks:    (vehicleClass === "class1" && hasTrailer && needsTrailerCheck)
                         ? buildChecklist(getChecksForClass("class1", "trailer"))
@@ -103,6 +109,8 @@ function emptyDraft(): ShiftDraft {
     totalMins:       0,
     fuelDrawn:       "",
     adBlueDrawn:     "",
+    odometerEnd:     "",
+    truckReg:        "",
     segments:        [newSegment()],
     nightOut:        false,
     expenses:        "",

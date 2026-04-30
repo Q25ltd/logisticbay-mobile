@@ -174,7 +174,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
           <TouchableOpacity
             style={styles.gridCard}
-            onPress={() => navigation.navigate("ChangePin")}
+            onPress={() => navigation.navigate("ChangePin", {})}
           >
             <Text style={styles.gridIcon}>🔒</Text>
             <Text style={styles.gridLabel}>Change PIN</Text>

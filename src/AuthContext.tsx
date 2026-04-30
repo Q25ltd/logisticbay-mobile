@@ -11,11 +11,23 @@ interface User {
   companyName: string;
 }
 
+interface CompanyOption {
+  companyId:   number;
+  companyName: string;
+  role:        string;
+}
+
+interface LoginResult {
+  requiresCompanySelection: true;
+  companies: CompanyOption[];
+  user: { id: number; name: string; email: string };
+}
+
 interface AuthContextType {
   user:           User | null;
   loading:        boolean;
   mustChangePin:  boolean;
-  login:              (email: string, password: string) => Promise<boolean>;
+  login:              (email: string, password: string, companyId?: number) => Promise<boolean | LoginResult>;
   logout:             () => Promise<void>;
   clearMustChangePin: () => void;
 }

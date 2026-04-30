@@ -7,12 +7,13 @@ import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { COLOURS, Button } from "../components";
 import { useAuth } from "../AuthContext";
+import type { LoginScreenProps } from "../navigation/types";
 
 const SAVED_EMAIL_KEY = "savedEmail";
 const SAVED_PIN_KEY   = "savedPin";
 const BIO_ENABLED_KEY = "biometricEnabled";
 
-export default function LoginScreen({ navigation }: { navigation: any }) {
+export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { login } = useAuth();
   const [email,       setEmail]       = useState("");
   const [pin,         setPin]         = useState("");
@@ -81,7 +82,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     setLoading(true);
     try {
       const result = await login(email.toLowerCase().trim(), pin.trim());
-      if (result?.requiresCompanySelection) {
+      if (result !== true && result !== false && result?.requiresCompanySelection) {
         setSavedEmail(email.toLowerCase().trim());
         setSavedPass(pin.trim());
         setCompanies(result.companies);

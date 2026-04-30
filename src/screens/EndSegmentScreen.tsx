@@ -7,8 +7,9 @@ import {
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 import { VEHICLE_CLASSES, type VehicleClass } from "../constants";
+import type { EndSegmentScreenProps } from "../navigation/types";
 
-interface Props { navigation: any }
+type Props = EndSegmentScreenProps;
 
 export default function EndSegmentScreen({ navigation }: Props) {
   const { currentSegment, updateSegment, addSegment, updateShiftField } = useShift();
@@ -95,9 +96,9 @@ export default function EndSegmentScreen({ navigation }: Props) {
     );
 
     if (needsTruckCheck) {
-      navigation.navigate("TruckChecklist");
+      navigation.navigate("TruckChecklist", { type: "truck" });
     } else if (needsTrailerCheck) {
-      navigation.navigate("TrailerChecklist");
+      navigation.navigate("TrailerChecklist", { type: "trailer" });
     } else {
       navigation.navigate("Deliveries");
     }

@@ -16,16 +16,16 @@ export type RootStackParamList = {
   Home:           undefined;
   // Shift flow
   StartShift:     undefined;
-  TruckChecklist: { type?: "truck" | "trailer" };
-  TrailerChecklist: { type?: "truck" | "trailer" };
+  TruckChecklist:   { type?: "truck" | "trailer"; returnTo?: string; onComplete?: () => void };
+  TrailerChecklist: { type?: "truck" | "trailer"; returnTo?: string; onComplete?: () => void };
   Deliveries:     undefined;
   EndSegment:     undefined;
   EndShift:       undefined;
   Review:         undefined;
-  ChangeVehicle:  undefined;
+  ChangeVehicle:  { changeType?: "truck" | "trailer" };
   // Jobs
   Jobs:           undefined;
-  JobDetail:      { jobId: number };
+  JobDetail:      { jobId: number; viewOnly?: boolean };
   // History
   History:        undefined;
   ShiftDetail:    { shiftId: number };
