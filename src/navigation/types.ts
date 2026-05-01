@@ -16,8 +16,8 @@ export type RootStackParamList = {
   Home:           undefined;
   // Shift flow
   StartShift:     undefined;
-  TruckChecklist:   { type?: "truck" | "trailer"; returnTo?: string; onComplete?: () => void };
-  TrailerChecklist: { type?: "truck" | "trailer"; returnTo?: string; onComplete?: () => void };
+  TruckChecklist:   { type?: "truck" | "trailer"; returnTo?: string };
+  TrailerChecklist: { type?: "truck" | "trailer"; returnTo?: string };
   Deliveries:     undefined;
   EndSegment:     undefined;
   EndShift:       undefined;

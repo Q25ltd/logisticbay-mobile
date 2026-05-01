@@ -58,7 +58,8 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <>
+      <NavigationContainer>
       {/* eslint-disable @typescript-eslint/no-explicit-any */}
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
@@ -84,7 +85,8 @@ function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen as any} />
         )}
       </Stack.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+    </>
   );
 }
 

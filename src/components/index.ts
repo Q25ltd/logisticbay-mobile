@@ -9,6 +9,7 @@ export { SectionHeader } from "./SectionHeader";
 export { LabelValue }    from "./LabelValue";
 export { Badge }         from "./Badge";
 export { AppFooter }     from "./AppFooter";
+export { OfflineBanner } from "./OfflineBanner";
 
 // Re-export COLOURS for files that imported them from the old components.tsx.
 // New files should import from "../theme" directly.
