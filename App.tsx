@@ -5,6 +5,8 @@ import { ActivityIndicator, View } from "react-native";
 import { AuthProvider, useAuth } from "./src/AuthContext";
 import { ShiftProvider, useShift } from "./src/ShiftContext";
 import { COLOURS } from "./src/theme";
+import { useNetworkStatus } from "./src/hooks/useNetworkStatus";
+import { OfflineBanner } from "./src/components/OfflineBanner";
 import type { RootStackParamList } from "./src/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -48,6 +50,7 @@ function InitialScreen({ navigation }: InitialScreenProps) {
 
 function AppNavigator() {
   const { user, loading } = useAuth();
+  const { syncStatus, queueSize } = useNetworkStatus();
 
   if (loading) {
     return (
@@ -59,6 +62,7 @@ function AppNavigator() {
 
   return (
     <>
+      <OfflineBanner syncStatus={syncStatus} queueSize={queueSize} />
       <NavigationContainer>
       {/* eslint-disable @typescript-eslint/no-explicit-any */}
       <Stack.Navigator screenOptions={{ headerShown: false }}>

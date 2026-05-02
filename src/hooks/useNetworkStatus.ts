@@ -1,38 +1,29 @@
-/**
- * useNetworkStatus
- *
- * Monitors connection state via NetInfo.
- * When connection is restored, automatically flushes the offline queue.
- *
- * Use this hook once at the top of the app (AppNavigator).
- * Any screen can call useIsOnline() for a simple boolean.
- */
-
 import { useEffect, useRef, useState, useCallback } from "react";
-import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
-import { flushQueue, queueLength, type QueuedAction } from "../offlineQueue";
+import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
+import { flushQueue, getQueueLength, type QueuedJobEvent } from "../offlineQueue";
 
 export type SyncStatus = "online" | "offline" | "syncing" | "synced";
 
 interface NetworkStatus {
-  isOnline:   boolean;
-  syncStatus: SyncStatus;
-  queueSize:  number;
-  /** Manually trigger a flush (e.g. on app foreground) */
+  isOnline:    boolean;
+  syncStatus:  SyncStatus;
+  queueSize:   number;
   triggerSync: () => Promise<void>;
 }
 
-// Shared state — updated by the single useNetworkStatus instance
 type Listener = (status: NetworkStatus) => void;
 let _listeners: Listener[] = [];
-let _status: NetworkStatus = { isOnline: true, syncStatus: "online", queueSize: 0, triggerSync: async () => {} };
+let _status: NetworkStatus = {
+  isOnline:    true,
+  syncStatus:  "online",
+  queueSize:   0,
+  triggerSync: async () => {},
+};
 
 function notify(s: NetworkStatus) {
   _status = s;
   _listeners.forEach(fn => fn(s));
 }
-
-// ─── Main hook (use once in AppNavigator) ─────────────────────────────────────
 
 export function useNetworkStatus(): NetworkStatus {
   const [status, setStatus] = useState<NetworkStatus>(_status);
@@ -40,23 +31,28 @@ export function useNetworkStatus(): NetworkStatus {
 
   const runFlush = useCallback(async () => {
     if (isSyncing.current) return;
-    const size = await queueLength();
+    const size = await getQueueLength();
     if (size === 0) return;
 
     isSyncing.current = true;
     notify({ ..._status, syncStatus: "syncing", queueSize: size });
 
     try {
-      // Import api lazily to avoid circular dependency
       const { api } = await import("../api");
 
       const sent = await flushQueue(
-        async (action: QueuedAction) => {
-          await api.request({
-            method: action.method,
-            url:    action.url,
-            data:   action.data,
-          });
+        async (events: QueuedJobEvent[]) => {
+          const res = await api.post<{
+            synced: { clientEventId: string; status: string }[];
+            failed: { clientEventId: string; status: string }[];
+          }>(
+            "/sync/events",
+            { events },
+          );
+          return [...res.data.synced, ...res.data.failed].map(r => ({
+            clientEventId: r.clientEventId,
+            result:        r.status,
+          }));
         },
         (remaining) => {
           notify({ ..._status, syncStatus: "syncing", queueSize: remaining });
@@ -64,13 +60,12 @@ export function useNetworkStatus(): NetworkStatus {
       );
 
       if (sent > 0) {
-        notify({ ..._status, syncStatus: "synced", queueSize: 0 });
-        // Reset to "online" after 3 seconds
+        notify({ ..._status, isOnline: true, syncStatus: "synced", queueSize: 0 });
         setTimeout(() => {
-          notify({ ..._status, syncStatus: "online", queueSize: 0 });
+          notify({ ..._status, isOnline: true, syncStatus: "online", queueSize: 0 });
         }, 3000);
       } else {
-        notify({ ..._status, syncStatus: "online" });
+        notify({ ..._status, isOnline: true, syncStatus: "online" });
       }
     } catch {
       notify({ ..._status, syncStatus: "online" });
@@ -83,10 +78,9 @@ export function useNetworkStatus(): NetworkStatus {
     const listener: Listener = (s) => setStatus({ ...s });
     _listeners.push(listener);
 
-    // Subscribe to NetInfo
     const unsubscribe = NetInfo.addEventListener(async (state: NetInfoState) => {
       const online = !!(state.isConnected && state.isInternetReachable !== false);
-      const size   = await queueLength();
+      const size   = await getQueueLength();
 
       if (online) {
         notify({ isOnline: true, syncStatus: "online", queueSize: size, triggerSync: runFlush });
@@ -96,7 +90,6 @@ export function useNetworkStatus(): NetworkStatus {
       }
     });
 
-    // Expose triggerSync on the shared status
     _status.triggerSync = runFlush;
 
     return () => {
@@ -107,8 +100,6 @@ export function useNetworkStatus(): NetworkStatus {
 
   return status;
 }
-
-// ─── Lightweight hook for any screen that just needs online/offline ────────────
 
 export function useIsOnline(): boolean {
   const [online, setOnline] = useState(_status.isOnline);

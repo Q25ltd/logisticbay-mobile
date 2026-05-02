@@ -14,6 +14,8 @@ import { api } from "../../api";
 import { Card } from "../../components";
 import { COLOURS } from "../../theme";
 import { useShift } from "../../ShiftContext";
+import { enqueueJobEvent } from "../../offlineQueue";
+import { useIsOnline } from "../../hooks/useNetworkStatus";
 import { JOB_STATUS_LABELS, JOB_STATUS_COLOURS, EVENT_TYPE_LABELS } from "../../constants/jobStatuses";
 import { VehicleConfirmForm } from "./VehicleConfirmForm";
 import { CollectionForm }     from "./CollectionForm";
@@ -50,6 +52,7 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
   const { draft, currentSegment, draftRestored } = useShift();
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const viewOnly = !hasActiveShift;
+  const isOnline = useIsOnline();
 
   // ── Core job state ──────────────────────────────────────────────────────────
   const [job,     setJob]     = useState<any>(null);
@@ -105,6 +108,27 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
 
   async function doStatusUpdate(status: string, extra: Record<string, unknown>) {
     setSaving(true);
+
+    if (!isOnline) {
+      // Offline: queue and update UI optimistically
+      const STATUS_TO_EVENT_TYPE: Record<string, string> = {
+        in_progress: 'started',
+      };
+      await enqueueJobEvent({
+        jobId,
+        eventType:      STATUS_TO_EVENT_TYPE[status] ?? status,
+        actualQuantity: extra.actualQuantity as string | undefined,
+        actualUnit:     extra.actualUnit     as string | undefined,
+        podNumber:      extra.podNumber      as string | undefined,
+        collectionNote: extra.collectionNote as string | undefined,
+        deliveryNote:   extra.deliveryNote   as string | undefined,
+      });
+      // Optimistic local update so the driver sees progress
+      setJob((prev: any) => prev ? { ...prev, status, ...extra } : prev);
+      setSaving(false);
+      return;
+    }
+
     try {
       await api.patch(`/jobs/${jobId}/status`, { status, ...extra });
       await loadJob();
