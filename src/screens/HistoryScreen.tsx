@@ -203,19 +203,30 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
   // Filter out locally hidden shifts for display
   const visibleShifts = shifts.filter(s => !hidden.includes(s.id));
 
-  // Weekly hours (from all shifts, not just visible)
-  const weekStart   = getWeekStart(new Date());
-  const thisWeek    = shifts.filter(s => new Date(s.shiftDate) >= weekStart);
-  const weeklyMins  = thisWeek.reduce((sum, s) => sum + minsFromStr(s.totalHours), 0);
-  const weeklyHours = Math.floor(weeklyMins / 60);
-  const weeklyRem   = weeklyMins % 60;
-  const weeklyStr   = weeklyMins > 0
-    ? `${weeklyHours}h ${weeklyRem.toString().padStart(2,"0")}m`
-    : "No shifts this week";
-  const weekColour  = weeklyMins >= 60*60 ? COLOURS.fail : weeklyMins >= 48*60 ? COLOURS.warning : COLOURS.pass;
-  const weekWarning = weeklyMins >= 60*60
+  // Weekly hours — completed/submitted shifts only, not draft or failed
+  const weekStart     = getWeekStart(new Date());
+  const thisWeek      = shifts.filter(s =>
+    new Date(s.shiftDate) >= weekStart &&
+    (s.status === "completed" || s.status === "submitted")
+  );
+  const fmt = (m: number) => `${Math.floor(m / 60)}h ${(m % 60).toString().padStart(2, "0")}m`;
+
+  // Working mins = totalHours (working time, legal compliance)
+  const weeklyWorkMins  = thisWeek.reduce((sum, s) => sum + minsFromStr(s.totalHours), 0);
+  // Paid mins = working + POA
+  const weeklyPaidMins  = thisWeek.reduce((sum, s) => {
+    const poaMins = parseInt(s.poaMins ?? "0", 10) || 0;
+    return sum + minsFromStr(s.totalHours) + poaMins;
+  }, 0);
+
+  const weeklyWorkStr  = weeklyWorkMins > 0 ? fmt(weeklyWorkMins) : "—";
+  const weeklyPaidStr  = weeklyPaidMins > 0 ? fmt(weeklyPaidMins) : "—";
+  const noShifts       = weeklyWorkMins === 0;
+
+  const weekColour  = weeklyWorkMins >= 60*60 ? COLOURS.fail : weeklyWorkMins >= 48*60 ? COLOURS.warning : COLOURS.pass;
+  const weekWarning = weeklyWorkMins >= 60*60
     ? "⚠ Exceeded 60h weekly limit (UK/EU)"
-    : weeklyMins >= 48*60
+    : weeklyWorkMins >= 48*60
     ? "⚠ Approaching 60h weekly limit"
     : null;
 
@@ -238,17 +249,31 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
       </View>
 
       {/* Weekly hours */}
-      <View style={[styles.weeklyCard, { borderColor: weekColour }]}>
-        <View style={styles.weeklyLeft}>
-          <Text style={styles.weeklyLabel}>This Week — Paid Hours</Text>
-          <Text style={[styles.weeklyValue, { color: weekColour }]}>{weeklyStr}</Text>
-          {weekWarning && <Text style={styles.weeklyWarning}>{weekWarning}</Text>}
-        </View>
-        <View style={styles.weeklyRight}>
-          <Text style={styles.weeklyLimitLabel}>Legal limit</Text>
-          <Text style={styles.weeklyLimitValue}>60h / week</Text>
-          <Text style={styles.weeklyLimitSub}>48h avg target</Text>
-        </View>
+      <View style={[styles.weeklyCard, { borderColor: noShifts ? COLOURS.border : weekColour }]}>
+        {noShifts ? (
+          <Text style={styles.weeklyLabel}>No completed shifts this week</Text>
+        ) : (
+          <>
+            <View style={styles.weeklyRow}>
+              <View style={styles.weeklyCol}>
+                <Text style={styles.weeklyLabel}>Working Hrs</Text>
+                <Text style={[styles.weeklyValue, { color: weekColour }]}>{weeklyWorkStr}</Text>
+              </View>
+              <View style={styles.weeklyDivider} />
+              <View style={styles.weeklyCol}>
+                <Text style={styles.weeklyLabel}>Paid Hrs</Text>
+                <Text style={[styles.weeklyValue, { color: COLOURS.accent }]}>{weeklyPaidStr}</Text>
+              </View>
+              <View style={styles.weeklyDivider} />
+              <View style={[styles.weeklyCol, { alignItems: "flex-end" }]}>
+                <Text style={styles.weeklyLimitLabel}>Legal limit</Text>
+                <Text style={styles.weeklyLimitValue}>60h / week</Text>
+                <Text style={styles.weeklyLimitSub}>48h avg target</Text>
+              </View>
+            </View>
+            {weekWarning && <Text style={styles.weeklyWarning}>{weekWarning}</Text>}
+          </>
+        )}
       </View>
 
       <Text style={styles.infoNote}>
@@ -379,18 +404,19 @@ const styles = StyleSheet.create({
   backText:        { color: COLOURS.accent, fontSize: 15, fontWeight: "600" },
   topTitle:        { fontSize: 17, fontWeight: "700", color: COLOURS.primary },
   weeklyCard: {
-    flexDirection: "row", margin: 16, marginBottom: 4,
+    margin: 16, marginBottom: 4,
     backgroundColor: COLOURS.white, borderRadius: 12, padding: 16,
     borderWidth: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  weeklyLeft:       { flex: 1 },
-  weeklyLabel:      { fontSize: 11, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
-  weeklyValue:      { fontSize: 24, fontWeight: "800", marginBottom: 4 },
-  weeklyWarning:    { fontSize: 11, color: "#92400e" },
-  weeklyRight:      { alignItems: "flex-end", justifyContent: "center" },
+  weeklyRow:        { flexDirection: "row", alignItems: "center" },
+  weeklyCol:        { flex: 1 },
+  weeklyDivider:    { width: 1, height: 40, backgroundColor: COLOURS.border, marginHorizontal: 12 },
+  weeklyLabel:      { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
+  weeklyValue:      { fontSize: 22, fontWeight: "800" },
+  weeklyWarning:    { fontSize: 11, color: "#92400e", marginTop: 8 },
   weeklyLimitLabel: { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase" },
-  weeklyLimitValue: { fontSize: 16, fontWeight: "700", color: COLOURS.primary },
+  weeklyLimitValue: { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
   weeklyLimitSub:   { fontSize: 10, color: COLOURS.muted },
   infoNote:         { fontSize: 11, color: COLOURS.muted, textAlign: "center", marginBottom: 8, paddingHorizontal: 20, lineHeight: 16 },
   emptyIcon:        { fontSize: 48, marginBottom: 12 },
