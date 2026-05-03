@@ -48,6 +48,7 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
     setSubmitting(true);
     try {
       for (const seg of draft.segments) {
+        if (!seg.truckReg.trim()) continue; // spare driver — no vehicle, nothing to record
         const segRes = await api.post(`/shifts/${draft.shiftId}/segments`, {
           truckReg:          seg.truckReg,
           trailerReg:        seg.hasTrailer ? seg.trailerReg : null,
