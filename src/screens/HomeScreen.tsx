@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  View, Text, StyleSheet, SafeAreaView,
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Alert,
 } from "react-native";
 import { useAuth } from "../AuthContext";
@@ -93,7 +93,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {/* Main actions */}
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
         <TouchableOpacity
           style={[styles.startBtn, hasDraft && styles.startBtnDisabled]}
           onPress={() => {
@@ -192,7 +192,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </Text>
           <Text style={styles.companyBannerSub}>logistics · transport · delivery</Text>
         </View>
-      </View>
+      </ScrollView>
       <AppFooter />
     </SafeAreaView>
   );
@@ -224,7 +224,8 @@ const styles = StyleSheet.create({
   discardBtnText: { fontSize: 13, fontWeight: "700", color: COLOURS.fail },
   discardText:      { color: COLOURS.muted, fontSize: 11 },
 
-  content:          { flex: 1, padding: 16 },
+  content:          { flex: 1 },
+  contentInner:     { padding: 16, paddingBottom: 24 },
   startBtn: {
     backgroundColor: COLOURS.primary, borderRadius: 16, padding: 24,
     alignItems: "center", marginBottom: 16,
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   gridLabel:        { fontSize: 14, fontWeight: "700", color: COLOURS.primary, marginBottom: 2 },
   gridSub:          { fontSize: 11, color: COLOURS.muted },
   companyBanner: {
-    marginTop: 20, marginHorizontal: 0, paddingVertical: 24, paddingHorizontal: 20,
+    marginTop: 20, marginBottom: 16, marginHorizontal: 0, paddingVertical: 24, paddingHorizontal: 20,
     backgroundColor: COLOURS.primary, borderRadius: 16, alignItems: "center",
   },
   companyBannerLabel: { fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 },
