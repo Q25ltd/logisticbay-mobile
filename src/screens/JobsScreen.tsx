@@ -100,6 +100,7 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
   const [refreshing,   setRefreshing]   = useState(false);
 
   const { draft, currentSegment, draftRestored, updateShiftField, updateSegment } = useShift();
+  const odomUnit = (draft?.odometerUnit ?? "km") as "km" | "miles";
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const hasTruck = !!(draft?.truckReg);
   const [showLastVehicle, setShowLastVehicle] = useState(false);
@@ -308,7 +309,7 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
 
             {draft?.truckReg ? (
               <>
-                <Text style={styles.modalLabel}>Odometer end (miles)</Text>
+                <Text style={styles.modalLabel}>Odometer end ({odomUnit})</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={lastOdometer}

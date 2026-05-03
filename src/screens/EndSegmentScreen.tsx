@@ -12,7 +12,8 @@ import type { EndSegmentScreenProps } from "../navigation/types";
 type Props = EndSegmentScreenProps;
 
 export default function EndSegmentScreen({ navigation }: Props) {
-  const { currentSegment, updateSegment, changeVehicle, updateShiftField } = useShift();
+  const { draft, currentSegment, updateSegment, changeVehicle, updateShiftField } = useShift();
+  const odomUnit = (draft.odometerUnit ?? "km") as "km" | "miles";
 
   React.useEffect(() => { updateShiftField("lastScreen", "EndSegment"); }, []);
 
@@ -128,14 +129,14 @@ export default function EndSegmentScreen({ navigation }: Props) {
             {currentSegment.hasTrailer ? `  +  📦 ${currentSegment.trailerReg}` : ""}
           </Text>
           <Text style={styles.metaText}>
-            Start: {currentSegment.odometerStart} km  ·  {currentSegment.deliveries.length} job{currentSegment.deliveries.length !== 1 ? "s" : ""}
+            Start: {currentSegment.odometerStart} {odomUnit}  ·  {currentSegment.deliveries.length} job{currentSegment.deliveries.length !== 1 ? "s" : ""}
           </Text>
         </Card>
 
         {/* Odometer — always required */}
         <Card style={{ marginHorizontal: 16, marginBottom: 8 }}>
           <Text style={styles.fieldLabel}>
-            {showChange ? "Current Odometer Reading (km) *" : "Final Odometer Reading (km) *"}
+            {showChange ? `Current Odometer Reading (${odomUnit}) *` : `Final Odometer Reading (${odomUnit}) *`}
           </Text>
           <Text style={styles.odomHint}>
             {showChange
@@ -153,7 +154,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
           {mileage !== null && mileage >= 0 && (
             <View style={styles.mileageBadge}>
               <Text style={styles.mileageLabel}>Segment mileage</Text>
-              <Text style={styles.mileageValue}>{mileage} km</Text>
+              <Text style={styles.mileageValue}>{mileage} {odomUnit}</Text>
             </View>
           )}
 
@@ -299,7 +300,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
 
             {truckChanged && (
               <>
-                <Text style={styles.fieldLabel}>New Truck Odometer Start (km) *</Text>
+                <Text style={styles.fieldLabel}>New Truck Odometer Start ({odomUnit}) *</Text>
                 <Text style={styles.odomHint}>Starting odometer reading of the new truck</Text>
                 <TextInput
                   style={styles.input}

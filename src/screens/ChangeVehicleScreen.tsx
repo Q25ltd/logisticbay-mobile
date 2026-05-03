@@ -19,6 +19,7 @@ const CHANGE_REASONS = [
 
 export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicleScreenProps) {
   const { draft, currentSegment, changeVehicle } = useShift();
+  const odomUnit = (draft.odometerUnit ?? "km") as "km" | "miles";
 
   const returnTo    = (route.params as any)?.returnTo   as string | undefined;
   const returnJobId = (route.params as any)?.returnJobId as number | undefined;
@@ -112,7 +113,7 @@ export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicle
         {currentTruck && (
           <Card style={{ marginBottom: 12 }}>
             <Text style={styles.sectionLabel}>Last Vehicle: {currentTruck}</Text>
-            <Text style={styles.fieldLabel}>Odometer end (miles)</Text>
+            <Text style={styles.fieldLabel}>Odometer end ({odomUnit})</Text>
             <TextInput
               style={styles.regInput}
               value={odometerEnd}

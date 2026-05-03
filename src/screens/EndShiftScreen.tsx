@@ -14,6 +14,7 @@ import type { EndShiftScreenProps } from "../navigation/types";
 
 export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
   const { draft, updateShiftField, draftRestored } = useShift();
+  const odomUnit = (draft.odometerUnit ?? "km") as "km" | "miles";
 
   const [finishTime,  setFinishTime]  = useState(getCurrentTime());
   const [breakMins,   setBreakMins]   = useState("0");
@@ -242,7 +243,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
               <View style={styles.segStats}>
                 <View style={styles.segStat}>
                   <Text style={styles.segStatValue}>{seg.miles != null ? seg.miles.toLocaleString() : "—"}</Text>
-                  <Text style={styles.segStatLabel}>miles</Text>
+                  <Text style={styles.segStatLabel}>{odomUnit}</Text>
                 </View>
                 <View style={styles.segStat}>
                   <Text style={styles.segStatValue}>{seg.fuel != null ? `${seg.fuel}L` : "—"}</Text>
@@ -263,7 +264,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
               <View style={styles.segStats}>
                 <View style={styles.segStat}>
                   <Text style={styles.totalValue}>{totalMileage > 0 ? totalMileage.toLocaleString() : "—"}</Text>
-                  <Text style={styles.segStatLabel}>miles</Text>
+                  <Text style={styles.segStatLabel}>{odomUnit}</Text>
                 </View>
                 <View style={styles.segStat}>
                   <Text style={styles.totalValue}>{totalFuel > 0 ? `${totalFuel}L` : "—"}</Text>
