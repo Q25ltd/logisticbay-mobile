@@ -12,6 +12,8 @@ export interface QueuedJobEvent {
   collectionNote?: string;
   deliveryNote?:   string;
   clientTimestamp: string;
+  gpsLat?:         number;
+  gpsLng?:         number;
 }
 
 async function readQueue(): Promise<QueuedJobEvent[]> {
