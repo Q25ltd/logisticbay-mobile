@@ -19,6 +19,8 @@ interface Shift {
   startTime?:  string;
   endTime?:    string;
   totalHours?: string;
+  breakMins?:  string;
+  poaMins?:    string;
   segments:    any[];
 }
 
@@ -295,12 +297,26 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
                   </View>
 
                   <View style={styles.statsRow}>
-                    {item.totalHours ? (
-                      <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Paid Hours</Text>
-                        <Text style={[styles.statValue, { color: COLOURS.accent }]}>{item.totalHours}</Text>
-                      </View>
-                    ) : null}
+                    {item.totalHours ? (() => {
+                      const poaMins  = parseInt(item.poaMins  ?? "0", 10) || 0;
+                      const workMins = minsFromStr(item.totalHours);
+                      const paidMins = workMins + poaMins;
+                      const paidStr  = `${Math.floor(paidMins / 60)}h ${(paidMins % 60).toString().padStart(2, "0")}m`;
+                      return (
+                        <>
+                          <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>Working Hrs</Text>
+                            <Text style={[styles.statValue, { color: COLOURS.accent }]}>{item.totalHours}</Text>
+                          </View>
+                          {poaMins > 0 && (
+                            <View style={styles.statItem}>
+                              <Text style={styles.statLabel}>Paid Hrs</Text>
+                              <Text style={styles.statValue}>{paidStr}</Text>
+                            </View>
+                          )}
+                        </>
+                      );
+                    })() : null}
                     {item.startTime && item.endTime ? (
                       <View style={styles.statItem}>
                         <Text style={styles.statLabel}>Times</Text>
