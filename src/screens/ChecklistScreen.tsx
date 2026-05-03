@@ -63,7 +63,8 @@ const tog = StyleSheet.create({
 export default function ChecklistScreen({ navigation, route }: Props) {
   const { type, onComplete, returnTo }    = route.params ?? {};
   const [odometer, setOdometer]           = React.useState("");
-  const { currentSegment, updateSegment, updateShiftField } = useShift();
+  const { draft, currentSegment, updateSegment, updateShiftField } = useShift();
+  const odomUnit = (draft.odometerUnit ?? "km") as "km" | "miles";
 
   // Save current screen so app can resume here after crash
   React.useEffect(() => {
@@ -195,7 +196,7 @@ export default function ChecklistScreen({ navigation, route }: Props) {
 
       {isTruck && (
         <View style={styles.odometerBar}>
-          <Text style={styles.odometerLabel}>📍 Odometer reading (miles)</Text>
+          <Text style={styles.odometerLabel}>📍 Odometer reading ({odomUnit})</Text>
           <TextInput
             style={styles.odometerInput}
             value={odometer}

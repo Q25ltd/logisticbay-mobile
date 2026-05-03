@@ -89,8 +89,8 @@ export default function EndSegmentScreen({ navigation }: Props) {
     // Atomic: lock old segment readings + create new segment in one state update
     changeVehicle(
       currentOdometer,
-      "", // fuel not captured here — entered per-segment via ChangeVehicle
-      "",
+      fuelAdded.trim(),
+      adBlueAdded.trim(),
       newVehicleClass,
       newTruckReg.trim().toUpperCase(),
       isClass1 && hasTrailer ? newTrailerReg.trim().toUpperCase() : "",
