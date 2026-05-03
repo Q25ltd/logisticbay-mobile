@@ -6,6 +6,7 @@
  * Each sub-form receives only the state it needs plus callbacks to update it.
  */
 import React, { useState, useEffect } from "react";
+import * as Location from "expo-location";
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
   TouchableOpacity, ActivityIndicator, Alert, TextInput,
@@ -108,6 +109,20 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
 
   async function doStatusUpdate(status: string, extra: Record<string, unknown>) {
     setSaving(true);
+    const clientTimestamp = new Date().toISOString();
+
+    let gpsLat: number | undefined;
+    let gpsLng: number | undefined;
+    try {
+      const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      if (permStatus === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        gpsLat = loc.coords.latitude;
+        gpsLng = loc.coords.longitude;
+      }
+    } catch {
+      // GPS unavailable — continue without it
+    }
 
     if (!isOnline) {
       // Offline: queue and update UI optimistically
@@ -122,6 +137,8 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
         podNumber:      extra.podNumber      as string | undefined,
         collectionNote: extra.collectionNote as string | undefined,
         deliveryNote:   extra.deliveryNote   as string | undefined,
+        gpsLat,
+        gpsLng,
       });
       // Optimistic local update so the driver sees progress
       setJob((prev: any) => prev ? { ...prev, status, ...extra } : prev);
@@ -130,7 +147,7 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
     }
 
     try {
-      await api.patch(`/jobs/${jobId}/status`, { status, ...extra });
+      await api.patch(`/jobs/${jobId}/status`, { status, ...extra, clientTimestamp, gpsLat, gpsLng });
       await loadJob();
     } catch (err: unknown) {
       Alert.alert("Error", (err as any)?.response?.data?.error ?? "Failed to update");
