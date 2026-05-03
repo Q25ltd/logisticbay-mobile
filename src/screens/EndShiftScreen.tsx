@@ -17,8 +17,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
 
   const [finishTime,  setFinishTime]  = useState(getCurrentTime());
   const [breakMins,   setBreakMins]   = useState("0");
-  const [fuelDrawn,   setFuelDrawn]   = useState("");
-  const [adBlue,      setAdBlue]      = useState("");
+  const [poaMins,     setPoaMins]     = useState("0");
   const [nightOut,    setNightOut]    = useState(false);
   const [expenses,    setExpenses]    = useState("");
   const [delays,      setDelays]      = useState("");
@@ -27,32 +26,37 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
 
   useEffect(() => { updateShiftField("lastScreen", "EndShift"); }, []);
 
-  // Re-initialise fields from restored draft (after app crash)
   useEffect(() => {
     if (draftRestored && !initialised) {
-      if (draft.fuelDrawn)  setFuelDrawn(draft.fuelDrawn);
-      if (draft.adBlueDrawn) setAdBlue(draft.adBlueDrawn);
-      if (draft.nightOut)   setNightOut(draft.nightOut);
-      if (draft.expenses)   setExpenses(draft.expenses);
-      if (draft.delaysNote) setDelays(draft.delaysNote);
+      if (draft.nightOut)    setNightOut(draft.nightOut);
+      if (draft.expenses)    setExpenses(draft.expenses);
+      if (draft.delaysNote)  setDelays(draft.delaysNote);
       if (draft.defectsNote) setDefects(draft.defectsNote);
-      if (draft.finishTime) setFinishTime(draft.finishTime);
-      if (draft.breakMins)  setBreakMins(String(draft.breakMins));
+      if (draft.finishTime)  setFinishTime(draft.finishTime);
+      if (draft.breakMins)   setBreakMins(String(draft.breakMins));
+      if (draft.poaMins)     setPoaMins(String(draft.poaMins));
       setInitialised(true);
     }
   }, [draftRestored]);
 
   const startTime = draft.startTime ?? "";
   const breakNum  = parseInt(breakMins) || 0;
-  const hours     = calcPaidHours(startTime, finishTime, breakNum);
+  const poaNum    = parseInt(poaMins)   || 0;
+  const hours     = calcPaidHours(startTime, finishTime, breakNum, poaNum);
 
-  const totalMileage = draft.segments.reduce((sum, s: Segment) => {
-    if (s.odometerEnd && s.odometerStart) {
-      const diff = parseInt(s.odometerEnd) - parseInt(s.odometerStart);
-      return diff > 0 ? sum + diff : sum;
-    }
-    return sum;
-  }, 0);
+  // Per-segment stats
+  const segmentStats = draft.segments.map((s: Segment) => {
+    const miles = (s.odometerEnd && s.odometerStart)
+      ? Math.max(0, parseInt(s.odometerEnd) - parseInt(s.odometerStart))
+      : null;
+    const fuel    = parseFloat(s.fuelDrawn   ?? "") || null;
+    const adBlue  = parseFloat(s.adBlueDrawn ?? "") || null;
+    return { truckReg: s.truckReg, miles, fuel, adBlue };
+  });
+
+  const totalMileage = segmentStats.reduce((sum, s) => sum + (s.miles ?? 0), 0);
+  const totalFuel    = segmentStats.reduce((sum, s) => sum + (s.fuel   ?? 0), 0);
+  const totalAdBlue  = segmentStats.reduce((sum, s) => sum + (s.adBlue ?? 0), 0);
 
   function handleTimeBlur() {
     const formatted = formatTimeInput(finishTime);
@@ -61,6 +65,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
   }
 
   useEffect(() => { updateShiftField("breakMins", parseInt(breakMins) || 0); }, [breakMins]);
+  useEffect(() => { updateShiftField("poaMins",   parseInt(poaMins)   || 0); }, [poaMins]);
 
   function handleNext() {
     const formatted = formatTimeInput(finishTime);
@@ -71,12 +76,15 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
     updateShiftField("defectsNote", defects);
     updateShiftField("finishTime",  formatted);
     updateShiftField("breakMins",   breakNum);
+    updateShiftField("poaMins",     poaNum);
     updateShiftField("totalHours",  hours.paidStr);
     updateShiftField("totalMins",   hours.paidMins);
+    updateShiftField("workingMins", hours.workingMins);
     navigation.navigate("Review");
   }
 
   const overDailyLimit = hours.totalMins > 10 * 60;
+  const showPoaWarning = poaNum === 0 && hours.paidMins > 0;
 
   return (
     <SafeAreaView style={shiftSharedStyles.container}>
@@ -98,10 +106,10 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
         {/* Live hours bar */}
         <View style={styles.hoursSummary}>
           {[
-            { label: "Start",  value: startTime || "—" },
-            { label: "Finish", value: finishTime },
-            { label: "Break",  value: breakNum > 0 ? `${breakNum}m` : "—" },
-            { label: "Paid",   value: hours.paidStr !== "—" ? hours.paidStr : "—", accent: true },
+            { label: "Start",   value: startTime || "—" },
+            { label: "Finish",  value: finishTime },
+            { label: "Break",   value: breakNum > 0 ? `${breakNum}m` : "—" },
+            { label: poaNum > 0 ? "Working" : "Paid", value: poaNum > 0 ? hours.workingStr : hours.paidStr, accent: true },
           ].map((item, i, arr) => (
             <React.Fragment key={item.label}>
               <View style={styles.hoursSummaryItem}>
@@ -160,18 +168,58 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
             keyboardType="numeric"
           />
 
+          <Text style={[shiftSharedStyles.fieldLabel, { marginTop: 12 }]}>
+            Period of Availability (POA) <Text style={shiftSharedStyles.optional}>(optional)</Text>
+          </Text>
+          <Text style={shiftSharedStyles.fieldHint}>
+            Waiting time you knew about in advance — loading queue, ferry, depot wait. Not counted as working time under UK law.
+          </Text>
+          <View style={styles.breakButtons}>
+            {["0", "30", "60", "90", "120", "180"].map(v => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.breakBtn, poaMins === v && styles.breakBtnActive]}
+                onPress={() => setPoaMins(v)}
+              >
+                <Text style={[styles.breakBtnText, poaMins === v && styles.breakBtnTextActive]}>
+                  {v === "0" ? "None" : v === "60" ? "1h" : v === "90" ? "1h30" : v === "120" ? "2h" : v === "180" ? "3h" : `${v}m`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            style={shiftSharedStyles.input}
+            value={poaMins}
+            onChangeText={setPoaMins}
+            placeholder="Or type minutes"
+            placeholderTextColor={COLOURS.muted}
+            keyboardType="numeric"
+          />
+
+          {showPoaWarning && (
+            <View style={styles.poaWarning}>
+              <Text style={styles.poaWarningText}>
+                ⚠ No POA entered — if you had any waiting time today, your legal working hours may be shown higher than actual. Add POA above to get an accurate figure.
+              </Text>
+            </View>
+          )}
+
           {hours.paidStr !== "—" && (
             <View style={styles.paidResult}>
               <View style={styles.paidResultRow}>
-                {[
+                {(poaNum > 0 ? [
+                  { label: "Total Shift", value: hours.totalStr },
+                  { label: "Break+POA",   value: `${breakNum + poaNum}m` },
+                  { label: "Working",     value: hours.workingStr, accent: true },
+                ] : [
                   { label: "Total Shift", value: hours.totalStr },
                   { label: "Break",       value: hours.breakStr },
                   { label: "Paid Hours",  value: hours.paidStr, accent: true },
-                ].map((item, i, arr) => (
+                ]).map((item, i, arr) => (
                   <React.Fragment key={item.label}>
                     <View style={styles.paidResultItem}>
                       <Text style={styles.paidResultLabel}>{item.label}</Text>
-                      <Text style={[styles.paidResultValue, item.accent && { color: COLOURS.accent, fontSize: 20 }]}>
+                      <Text style={[styles.paidResultValue, (item as any).accent && { color: COLOURS.accent, fontSize: 20 }]}>
                         {item.value}
                       </Text>
                     </View>
@@ -183,33 +231,54 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
           )}
         </Card>
 
-        <Card>
-          <Text style={shiftSharedStyles.fieldLabel}>Shift Totals</Text>
-          <View style={styles.totalsGrid}>
-            <View style={styles.totalItem}>
-              <Text style={styles.totalValue}>{totalMileage > 0 ? totalMileage.toLocaleString() : "—"}</Text>
-              <Text style={styles.totalLabel}>Miles</Text>
+        {/* Per-segment vehicle summary */}
+        <Card style={{ marginTop: 12 }}>
+          <Text style={shiftSharedStyles.fieldLabel}>Vehicles Used Today</Text>
+          {segmentStats.map((seg, i) => (
+            <View key={i} style={[styles.segRow, i > 0 && styles.segRowBorder]}>
+              <View style={styles.segPlate}>
+                <Text style={styles.segPlateText}>{seg.truckReg || "—"}</Text>
+              </View>
+              <View style={styles.segStats}>
+                <View style={styles.segStat}>
+                  <Text style={styles.segStatValue}>{seg.miles != null ? seg.miles.toLocaleString() : "—"}</Text>
+                  <Text style={styles.segStatLabel}>miles</Text>
+                </View>
+                <View style={styles.segStat}>
+                  <Text style={styles.segStatValue}>{seg.fuel != null ? `${seg.fuel}L` : "—"}</Text>
+                  <Text style={styles.segStatLabel}>fuel</Text>
+                </View>
+                <View style={styles.segStat}>
+                  <Text style={styles.segStatValue}>{seg.adBlue != null ? `${seg.adBlue}L` : "—"}</Text>
+                  <Text style={styles.segStatLabel}>adblue</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.totalDivider} />
-            <View style={styles.totalItem}>
-              <Text style={styles.totalValue}>
-                {draft.segments.reduce((s, seg: Segment) => s + (parseFloat(seg.fuelDrawn ?? "") || 0), 0) > 0
-                  ? `${draft.segments.reduce((s, seg: Segment) => s + (parseFloat(seg.fuelDrawn ?? "") || 0), 0)}L`
-                  : "—"}
-              </Text>
-              <Text style={styles.totalLabel}>Fuel</Text>
-            </View>
-            <View style={styles.totalDivider} />
-            <View style={styles.totalItem}>
-              <Text style={styles.totalValue}>
-                {draft.segments.reduce((s, seg: Segment) => s + (parseFloat(seg.adBlueDrawn ?? "") || 0), 0) > 0
-                  ? `${draft.segments.reduce((s, seg: Segment) => s + (parseFloat(seg.adBlueDrawn ?? "") || 0), 0)}L`
-                  : "—"}
-              </Text>
-              <Text style={styles.totalLabel}>AdBlue</Text>
-            </View>
-          </View>
+          ))}
 
+          {/* Day totals */}
+          {draft.segments.length > 1 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>TOTAL</Text>
+              <View style={styles.segStats}>
+                <View style={styles.segStat}>
+                  <Text style={styles.totalValue}>{totalMileage > 0 ? totalMileage.toLocaleString() : "—"}</Text>
+                  <Text style={styles.segStatLabel}>miles</Text>
+                </View>
+                <View style={styles.segStat}>
+                  <Text style={styles.totalValue}>{totalFuel > 0 ? `${totalFuel}L` : "—"}</Text>
+                  <Text style={styles.segStatLabel}>fuel</Text>
+                </View>
+                <View style={styles.segStat}>
+                  <Text style={styles.totalValue}>{totalAdBlue > 0 ? `${totalAdBlue}L` : "—"}</Text>
+                  <Text style={styles.segStatLabel}>adblue</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </Card>
+
+        <Card style={{ marginTop: 12 }}>
           <View style={shiftSharedStyles.rowBetween}>
             <View>
               <Text style={shiftSharedStyles.fieldLabel}>Night Out</Text>
@@ -224,7 +293,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
           </View>
         </Card>
 
-        <Card>
+        <Card style={{ marginTop: 12 }}>
           <Text style={shiftSharedStyles.fieldLabel}>
             Delays / Issues <Text style={shiftSharedStyles.optional}>(optional)</Text>
           </Text>
@@ -287,6 +356,11 @@ const styles = StyleSheet.create({
   },
   legalWarningTitle: { fontSize: 13, fontWeight: "700", color: "#92400e", marginBottom: 4 },
   legalWarningText:  { fontSize: 12, color: "#92400e", lineHeight: 17 },
+  poaWarning: {
+    backgroundColor: "#fffbeb", borderLeftWidth: 3, borderLeftColor: "#f59e0b",
+    padding: 10, borderRadius: 6, marginTop: 8,
+  },
+  poaWarningText: { fontSize: 12, color: "#92400e", lineHeight: 17 },
   breakButtons:      { flexDirection: "row", gap: 6, marginBottom: 8, marginTop: 4 },
   breakBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 8, minHeight: 44,
@@ -302,11 +376,18 @@ const styles = StyleSheet.create({
   paidResultLabel: { color: "rgba(255,255,255,0.6)", fontSize: 9, textTransform: "uppercase", marginBottom: 4 },
   paidResultValue: { color: COLOURS.white, fontSize: 14, fontWeight: "800" },
   paidResultSep:   { color: "rgba(255,255,255,0.3)", fontSize: 16, marginHorizontal: 2 },
-  totalsGrid:   { flexDirection: "row", alignItems: "center", marginVertical: 8 },
-  totalItem:    { flex: 1, alignItems: "center" },
-  totalValue:   { fontSize: 22, fontWeight: "900", color: COLOURS.primary },
-  totalLabel:   { fontSize: 11, color: COLOURS.muted, marginTop: 2, textTransform: "uppercase" },
-  totalDivider: { width: 1, height: 40, backgroundColor: COLOURS.border },
+  // Per-segment rows
+  segRow:          { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  segRowBorder:    { borderTopWidth: 1, borderTopColor: COLOURS.border },
+  segPlate:        { backgroundColor: COLOURS.primary, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, minWidth: 90, alignItems: "center" },
+  segPlateText:    { color: COLOURS.white, fontSize: 13, fontWeight: "900", letterSpacing: 1 },
+  segStats:        { flex: 1, flexDirection: "row", justifyContent: "space-around", marginLeft: 12 },
+  segStat:         { alignItems: "center" },
+  segStatValue:    { fontSize: 15, fontWeight: "700", color: COLOURS.primary },
+  segStatLabel:    { fontSize: 10, color: COLOURS.muted, textTransform: "uppercase", marginTop: 1 },
+  totalsRow:       { flexDirection: "row", alignItems: "center", borderTopWidth: 2, borderTopColor: COLOURS.primary, paddingTop: 10, marginTop: 4 },
+  totalsLabel:     { fontSize: 10, fontWeight: "800", color: COLOURS.primary, textTransform: "uppercase", letterSpacing: 0.5, minWidth: 90, textAlign: "center" },
+  totalValue:      { fontSize: 15, fontWeight: "900", color: COLOURS.accent },
 });
 
 export default EndShiftScreen;

@@ -35,6 +35,8 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
   const finishTime  = draft.finishTime  ?? "";
   const totalHours  = draft.totalHours  ?? "";
   const breakMins   = draft.breakMins   ?? 0;
+  const poaMins     = draft.poaMins     ?? 0;
+  const workingMins = draft.workingMins ?? 0;
   const fuelDrawn   = draft.fuelDrawn   ?? "";
   const adBlueDrawn = draft.adBlueDrawn ?? "";
 
@@ -81,6 +83,8 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
         endTime:      finishTime,
         totalHours,
         breakMins:    String(breakMins),
+        poaMins:      String(poaMins),
+        workingMins:  String(workingMins),
       });
 
       await clearPersistedDraft();
@@ -140,7 +144,8 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
               { label: "Start",      value: startTime  || "—" },
               { label: "Finish",     value: finishTime || "—" },
               { label: "Break",      value: breakMins > 0 ? `${breakMins}m` : "None" },
-              { label: "Paid Hours", value: totalHours || "—", primary: true },
+              ...(poaMins > 0 ? [{ label: "POA", value: `${poaMins}m` }] : []),
+              { label: poaMins > 0 ? "Working Hrs" : "Paid Hours", value: totalHours || "—", primary: true },
             ].map(item => (
               <View
                 key={item.label}

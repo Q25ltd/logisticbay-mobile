@@ -13,17 +13,22 @@ const CHANGE_REASONS = [
   "Planner changed verbally",
   "Assigned truck not available",
   "Adding vehicle at start of shift",
+  "Dropping trailer — running solo",
   "Other",
 ];
 
-export default function ChangeVehicleScreen({ navigation }: ChangeVehicleScreenProps) {
-  const { draft, currentSegment, updateShiftField, updateSegment, setVehicleClass } = useShift();
+export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicleScreenProps) {
+  const { draft, currentSegment, changeVehicle } = useShift();
+
+  const returnTo    = (route.params as any)?.returnTo   as string | undefined;
+  const returnJobId = (route.params as any)?.returnJobId as number | undefined;
 
   const currentTruck   = currentSegment?.truckReg ?? "";
   const currentTrailer = currentSegment?.trailerReg ?? "";
   const currentClass   = currentSegment?.vehicleClass ?? "class1";
 
   const [changing,      setChanging]      = useState<"truck"|"trailer"|"both"|null>(null);
+  const [dropTrailer,   setDropTrailer]   = useState(false);
   const [odometerEnd,   setOdometerEnd]   = useState("");
   const [fuelAdded,     setFuelAdded]     = useState("");
   const [adBlueAdded,   setAdBlueAdded]   = useState("");
@@ -39,49 +44,47 @@ export default function ChangeVehicleScreen({ navigation }: ChangeVehicleScreenP
       Alert.alert("Required", "Please enter the truck registration"); return;
     }
 
-    // Save last vehicle data
-    if (odometerEnd.trim()) updateSegment({ odometerEnd: odometerEnd.trim() });
-    if (fuelAdded.trim())   updateSegment({ fuelDrawn: fuelAdded.trim() });
-    if (adBlueAdded.trim()) updateSegment({ adBlueDrawn: adBlueAdded.trim() });
-
     const finalTruck   = (changing === "truck"   || changing === "both") ? newTruckReg.trim().toUpperCase()   : currentTruck;
-    const finalTrailer = (changing === "trailer" || changing === "both") ? newTrailerReg.trim().toUpperCase() : currentTrailer;
+    const finalTrailer = (changing === "trailer" || changing === "both")
+      ? (dropTrailer ? "" : newTrailerReg.trim().toUpperCase())
+      : currentTrailer;
     const truckChanged   = finalTruck   !== currentTruck;
     const trailerChanged = finalTrailer !== currentTrailer;
 
-    if (changing === "truck" || changing === "both") {
-      updateShiftField("truckReg", finalTruck);
-      setVehicleClass(newClass);
-    }
+    // Single atomic state update: lock old vehicle's readings + create new segment
+    changeVehicle(
+      odometerEnd.trim(), fuelAdded.trim(), adBlueAdded.trim(),
+      newClass, finalTruck, finalTrailer, !!finalTrailer, truckChanged, trailerChanged,
+    );
 
-    updateSegment({
-      vehicleClass:      newClass,
-      truckReg:          finalTruck,
-      trailerReg:        finalTrailer,
-      hasTrailer:        !!finalTrailer,
-      needsTruckCheck:   truckChanged,
-      needsTrailerCheck: trailerChanged,
-      odometerStart:     "",
-    });
+    const goBack = () => {
+      if (returnTo === "JobDetail" && returnJobId != null) {
+        navigation.navigate("JobDetail", { jobId: returnJobId });
+      } else {
+        navigation.navigate("Jobs");
+      }
+    };
 
     if (truckChanged) {
       Alert.alert("Truck Check Required",
         `You must complete a check for ${finalTruck} before continuing.`,
         [{ text: "Do Check Now", onPress: () => navigation.navigate("TruckChecklist", {
-          type: "truck", returnTo: "Jobs",
+          type: "truck",
+          returnTo: returnTo === "JobDetail" && returnJobId != null ? "JobDetail" : "Jobs",
+          ...(returnTo === "JobDetail" && returnJobId != null ? {} : {}),
         })}]
       );
     } else if (trailerChanged && finalTrailer) {
       Alert.alert("Trailer Check Required",
         `You must complete a check for ${finalTrailer} before continuing.`,
         [{ text: "Do Check Now", onPress: () => navigation.navigate("TrailerChecklist", {
-          type: "trailer", returnTo: "Jobs",
+          type: "trailer",
+          returnTo: returnTo === "JobDetail" && returnJobId != null ? "JobDetail" : "Jobs",
         })}]
       );
     } else {
-      // No check needed - vehicle updated, go back to jobs
-      Alert.alert("✅ Vehicle Updated", `Now using: ${finalTruck}${finalTrailer ? " + " + finalTrailer : ""}`, [
-        { text: "OK", onPress: () => navigation.navigate("Jobs") }
+      Alert.alert("Vehicle Updated", `Now using: ${finalTruck}${finalTrailer ? " + " + finalTrailer : ""}`, [
+        { text: "OK", onPress: goBack }
       ]);
     }
   }
@@ -188,15 +191,35 @@ export default function ChangeVehicleScreen({ navigation }: ChangeVehicleScreenP
             )}
             {(changing === "trailer" || changing === "both") && (
               <>
-                <Text style={styles.fieldLabel}>New Trailer Registration (blank = no trailer)</Text>
-                <TextInput
-                  style={styles.regInput}
-                  value={newTrailerReg}
-                  onChangeText={t => setNewTrailerReg(t.toUpperCase())}
-                  placeholder="e.g. TRL123 or leave blank"
-                  autoCapitalize="characters"
-                  placeholderTextColor={COLOURS.muted}
-                />
+                <Text style={styles.fieldLabel}>Trailer</Text>
+                <View style={styles.btnRow}>
+                  <TouchableOpacity
+                    style={[styles.optBtn, dropTrailer && { backgroundColor: COLOURS.fail, borderColor: COLOURS.fail }]}
+                    onPress={() => { setDropTrailer(true); setNewTrailerReg(""); }}
+                  >
+                    <Text style={[styles.optBtnText, dropTrailer && { color: COLOURS.white }]}>
+                      No trailer (drop / solo)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.optBtn, !dropTrailer && styles.optBtnActive]}
+                    onPress={() => setDropTrailer(false)}
+                  >
+                    <Text style={[styles.optBtnText, !dropTrailer && styles.optBtnTextActive]}>
+                      Enter trailer reg
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {!dropTrailer && (
+                  <TextInput
+                    style={styles.regInput}
+                    value={newTrailerReg}
+                    onChangeText={t => setNewTrailerReg(t.toUpperCase())}
+                    placeholder="e.g. TRL123"
+                    autoCapitalize="characters"
+                    placeholderTextColor={COLOURS.muted}
+                  />
+                )}
               </>
             )}
           </Card>

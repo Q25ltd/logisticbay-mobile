@@ -34,35 +34,44 @@ export function timeToMins(t: string): number {
 }
 
 export interface PaidHoursResult {
-  totalMins: number;
-  paidMins:  number;
-  totalStr:  string;
-  paidStr:   string;
-  breakStr:  string;
+  totalMins:   number;
+  paidMins:    number;
+  workingMins: number; // paidMins minus POA — used for UK legal working time limit
+  totalStr:    string;
+  paidStr:     string;
+  workingStr:  string;
+  breakStr:    string;
+  poaStr:      string;
 }
 
 /**
- * Calculates paid hours given start/finish times and break duration.
- * Returns formatted strings and raw minute values.
+ * Calculates paid and legal working hours.
+ * - paidMins   = total − break  (payroll)
+ * - workingMins = paidMins − POA (UK Working Time Directive compliance)
  * Handles overnight shifts (finish < start).
  */
 export function calcPaidHours(
   start:     string,
   finish:    string,
   breakMins: number,
+  poaMins:   number = 0,
 ): PaidHoursResult {
   if (!isValidTime(start) || !isValidTime(finish)) {
-    return { totalMins: 0, paidMins: 0, totalStr: "—", paidStr: "—", breakStr: "—" };
+    return { totalMins: 0, paidMins: 0, workingMins: 0, totalStr: "—", paidStr: "—", workingStr: "—", breakStr: "—", poaStr: "—" };
   }
   let total = timeToMins(finish) - timeToMins(start);
   if (total < 0) total += 24 * 60; // overnight shift
-  const paid = Math.max(0, total - breakMins);
-  const fmt  = (m: number) => `${Math.floor(m / 60)}h ${(m % 60).toString().padStart(2, "0")}m`;
+  const paid    = Math.max(0, total - breakMins);
+  const working = Math.max(0, paid - poaMins);
+  const fmt     = (m: number) => `${Math.floor(m / 60)}h ${(m % 60).toString().padStart(2, "0")}m`;
   return {
-    totalMins: total,
-    paidMins:  paid,
-    totalStr:  fmt(total),
-    paidStr:   fmt(paid),
-    breakStr:  breakMins > 0 ? `${breakMins} min` : "None",
+    totalMins:   total,
+    paidMins:    paid,
+    workingMins: working,
+    totalStr:    fmt(total),
+    paidStr:     fmt(paid),
+    workingStr:  working !== paid ? fmt(working) : fmt(paid),
+    breakStr:    breakMins > 0 ? `${breakMins} min` : "None",
+    poaStr:      poaMins   > 0 ? `${poaMins} min`   : "None",
   };
 }

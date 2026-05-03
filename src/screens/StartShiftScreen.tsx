@@ -18,7 +18,8 @@ const DAYS = [
   { key: "sun", label: "Sun", full: "Sunday" },
 ];
 
-const SHORT_REASONS = ["Medical appointment", "Family / personal", "Fatigue", "Other"];
+const SHORT_REASONS   = ["Medical appointment", "Family / personal", "Fatigue", "Other"];
+const ABSENCE_REASONS = ["Unwell / sick", "Family emergency", "Vehicle issue", "Other"];
 
 function getWeekStart(offset = 0): Date {
   const d = new Date();
@@ -51,7 +52,8 @@ interface DayPlan {
 }
 
 export default function StartShiftScreen({ navigation }: { navigation: any }) {
-  const { setShiftId, updateShiftField, updateSegment, setVehicleClass } = useShift() as any;
+  const { setShiftId, updateShiftField, updateSegment, draft } = useShift() as any;
+  const odometerUnit: "km" | "miles" = draft?.odometerUnit ?? "km";
 
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
@@ -70,6 +72,12 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
   });
   const [editingDay,  setEditingDay]  = useState<string | null>(null);
   const [editPlan,    setEditPlan]    = useState<DayPlan>({ pref: "normal", hours: 8 });
+
+  // Absence
+  const [showAbsenceModal,  setShowAbsenceModal]  = useState(false);
+  const [absenceReason,     setAbsenceReason]     = useState("");
+  const [absenceNote,       setAbsenceNote]       = useState("");
+  const [reportingAbsence,  setReportingAbsence]  = useState(false);
 
   // Vehicle
   const [truckStatus,  setTruckStatus]  = useState<"none"|"assigned"|"manual">("none");
@@ -150,6 +158,35 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
     } else { update(); }
   }
 
+  async function handleReportAbsence() {
+    if (!absenceReason) {
+      Alert.alert("Select a reason", "Please select why you can't come in today.");
+      return;
+    }
+    setReportingAbsence(true);
+    try {
+      const availPayload: any = { weekStart: weekStart.toISOString() };
+      DAYS.forEach(d => { availPayload[`${d.key}Pref`] = weekPlan[d.key].pref; });
+      availPayload[`${todayKey}Pref`] = "unavailable";
+      await api.post("/availability/my", availPayload);
+      await api.post("/shift-preferences", {
+        preferenceType: "unavailable",
+        shortDayReason: absenceReason,
+        shortDayNote:   absenceNote,
+      });
+      setShowAbsenceModal(false);
+      setAbsenceReason(""); setAbsenceNote("");
+      Alert.alert(
+        "Absence reported",
+        "Your planner has been notified. Take care and get well soon.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    } catch {
+      Alert.alert("Error", "Could not report absence. Please check your connection and try again.");
+    }
+    setReportingAbsence(false);
+  }
+
   const needsTruckCheck  = truckReg.trim().length > 0 && !truckChecked;
   const needsTrailerCheck = trailerReg.trim().length > 0 && !trailerChecked && trailerStatus !== "solo";
   const canStart = !needsTruckCheck && !needsTrailerCheck;
@@ -219,10 +256,11 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
       setShiftId(res.data.id);
       updateShiftField("startTime", formattedTime);
 
-      // Set vehicle info in draft
+      // Lock vehicle info into the segment.
+      // Do NOT touch odometerStart (ChecklistScreen already saved it) and
+      // do NOT call setVehicleClass (it would rebuild checklists and erase completed results).
       if (truckReg.trim()) {
         updateShiftField("truckReg", truckReg.trim().toUpperCase());
-        setVehicleClass(vehClass);
         updateSegment({
           vehicleClass:      vehClass,
           truckReg:          truckReg.trim().toUpperCase(),
@@ -230,7 +268,6 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
           hasTrailer:        trailerStatus !== "solo" && trailerStatus !== "none" && trailerReg.trim().length > 0,
           needsTruckCheck:   false,
           needsTrailerCheck: false,
-          odometerStart:     "",
         });
       }
 
@@ -279,6 +316,14 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
           />
           <Text style={styles.hint}>📍 GPS location recorded at shift start</Text>
         </Card>
+
+        {/* Can't come in today */}
+        <TouchableOpacity
+          style={styles.absenceBtn}
+          onPress={() => setShowAbsenceModal(true)}
+        >
+          <Text style={styles.absenceBtnText}>Can't come in today?</Text>
+        </TouchableOpacity>
 
         {/* Working time warning */}
         {workingTime?.warnings?.length > 0 && (
@@ -335,10 +380,30 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                   <TouchableOpacity
                     key={v.key}
                     style={[styles.optBtn, vehClass === v.key && styles.optBtnActive]}
-                    onPress={() => setVehClass(v.key as any)}
+                    onPress={() => {
+                      setVehClass(v.key as any);
+                      // Update the segment immediately so ChecklistScreen reads the right class
+                      updateSegment({ vehicleClass: v.key as any });
+                      setTruckChecked(false);
+                    }}
                   >
                     <Text style={[styles.optBtnText, vehClass === v.key && styles.optBtnTextActive]}>
                       {v.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Odometer Unit</Text>
+              <View style={styles.btnRow}>
+                {[{ key: "km", label: "Kilometres (km)" }, { key: "miles", label: "Miles" }].map(u => (
+                  <TouchableOpacity
+                    key={u.key}
+                    style={[styles.optBtn, odometerUnit === u.key && styles.optBtnActive]}
+                    onPress={() => updateShiftField("odometerUnit", u.key)}
+                  >
+                    <Text style={[styles.optBtnText, odometerUnit === u.key && styles.optBtnTextActive]}>
+                      {u.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -509,6 +574,52 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
         <AppFooter />
       </View>
 
+      {/* Absence modal */}
+      <Modal visible={showAbsenceModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Can't come in today?</Text>
+            <Text style={styles.hint}>Your planner will be notified straight away.</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Reason</Text>
+            {ABSENCE_REASONS.map(r => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.reasonBtn, absenceReason === r && styles.absenceReasonActive]}
+                onPress={() => setAbsenceReason(r)}
+              >
+                <Text style={[styles.reasonBtnText, absenceReason === r && { color: COLOURS.white }]}>{r}</Text>
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.fieldLabel}>
+              Note <Text style={{ fontWeight: "400", color: COLOURS.muted }}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={[styles.regInput, { fontSize: 14, letterSpacing: 0, textAlign: "left", minHeight: 60 }]}
+              value={absenceNote}
+              onChangeText={setAbsenceNote}
+              placeholder="Any extra details for your planner..."
+              placeholderTextColor={COLOURS.muted}
+              multiline
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => { setShowAbsenceModal(false); setAbsenceReason(""); setAbsenceNote(""); }}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: COLOURS.fail }]}
+                onPress={handleReportAbsence}
+                disabled={reportingAbsence}
+              >
+                <Text style={styles.saveBtnText}>{reportingAbsence ? "Sending..." : "Report Absence"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Day editor modal */}
       <Modal visible={!!editingDay} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -659,6 +770,12 @@ const styles = StyleSheet.create({
   editArrow:      { fontSize: 18, color: COLOURS.muted },
   repeatBtn:      { marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: "#eff6ff", alignItems: "center" },
   repeatBtnText:  { fontSize: 13, fontWeight: "600", color: "#1e40af" },
+  absenceBtn: {
+    borderWidth: 1.5, borderColor: COLOURS.fail, borderRadius: 10, borderStyle: "dashed",
+    padding: 12, alignItems: "center", marginBottom: 12,
+  },
+  absenceBtnText:      { fontSize: 13, fontWeight: "700", color: COLOURS.fail },
+  absenceReasonActive: { backgroundColor: COLOURS.fail, borderColor: COLOURS.fail },
   legalNote:      { fontSize: 11, color: COLOURS.muted, textAlign: "center", lineHeight: 16, marginTop: 8 },
   bottomNav:      { padding: 16, backgroundColor: COLOURS.white, borderTopWidth: 1, borderTopColor: COLOURS.border },
   modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },

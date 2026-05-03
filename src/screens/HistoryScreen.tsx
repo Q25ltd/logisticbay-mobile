@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
 import { COLOURS, Card } from "../components";
+import { useShift } from "../ShiftContext";
 
 interface Shift {
   id:          number;
@@ -71,6 +72,7 @@ async function hideShift(id: number) {
 }
 
 export default function HistoryScreen({ navigation }: { navigation: any }) {
+  const { draft, setShiftId, updateShiftField } = useShift();
   const [shifts,     setShifts]     = useState<Shift[]>([]);
   const [hidden,     setHidden]     = useState<number[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -83,9 +85,11 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
         api.get("/shifts?limit=100"),
         getHiddenShifts(),
       ]);
-      // Auto-hide shifts older than 90 days (still in DB, just not shown on driver's phone)
       const allShifts = res.data.data.filter((s: Shift) => s.status !== "deleted");
-      const toAutoHide = allShifts.filter((s: Shift) => daysSince(s.createdAt) >= 90).map((s: Shift) => s.id);
+      // Auto-hide completed shifts older than 33 days from the local list
+      const toAutoHide = allShifts
+        .filter((s: Shift) => s.status === "completed" && daysSince(s.createdAt) >= 33)
+        .map((s: Shift) => s.id);
       if (toAutoHide.length > 0) {
         const newHidden = [...new Set([...hiddenIds, ...toAutoHide])];
         await AsyncStorage.setItem("hiddenShifts", JSON.stringify(newHidden));
@@ -104,36 +108,88 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  async function handleHide(shift: Shift) {
-    const age = daysSince(shift.createdAt);
-
-    if (age < 28) {
-      Alert.alert(
-        "Too Recent to Hide",
-        `Shifts can be hidden from your view after 28 days.\n\nThis shift is ${age} day${age !== 1 ? "s" : ""} old.\n\nThe report is stored securely — your manager has access at all times.`,
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
+  async function handleDelete(shift: Shift) {
     Alert.alert(
-      "Hide from Your History?",
-      "This shift will be removed from your phone's history list.\n\nThe full report stays in the system — your manager can still view it.\n\nShifts older than 90 days are hidden automatically.",
+      "Delete This Shift?",
+      "This will permanently remove the shift from your history.\n\nYour manager retains full access to the report in the system.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Hide",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await hideShift(shift.id);
-            setHidden(prev => [...prev, shift.id]);
+            try {
+              await api.delete(`/shifts/${shift.id}`);
+              setShifts(prev => prev.filter(s => s.id !== shift.id));
+            } catch (err: any) {
+              const msg = err?.response?.data?.error ?? err?.message ?? "Unknown error";
+              const status = err?.response?.status ?? "no response";
+              Alert.alert("Delete failed", `${status}: ${msg}`);
+            }
           },
         },
       ]
     );
   }
 
-  // Filter out hidden shifts for display
+  async function handleEdit(shift: Shift) {
+    if (draft.shiftId === shift.id) {
+      // Local draft matches — use actual data state to decide where to land
+      const target = draft.finishTime ? "Review" : "EndShift";
+      navigation.navigate(target);
+      return;
+    }
+
+    // Local draft was lost — fetch from API to decide where to land
+    try {
+      const res = await api.get(`/shifts/${shift.id}`);
+      const s = res.data;
+      setShiftId(shift.id);
+      updateShiftField("startTime",  s.startTime  ?? "");
+      updateShiftField("finishTime", s.endTime    ?? "");
+      updateShiftField("breakMins",  parseInt(s.breakMins ?? "0", 10));
+      updateShiftField("totalHours", s.totalHours ?? "");
+      updateShiftField("shiftDate",  s.shiftDate ? new Date(s.shiftDate) : new Date());
+      updateShiftField("nightOut",   s.nightOut   ?? false);
+      updateShiftField("expenses",   s.expenses   ?? "");
+      updateShiftField("delaysNote", s.delaysNote ?? "");
+      updateShiftField("defectsNote",s.defectsNote ?? "");
+      // If the shift already has an end time recorded, go straight to Review
+      const target = s.endTime ? "Review" : "EndShift";
+      navigation.navigate(target);
+    } catch {
+      Alert.alert(
+        "Could Not Load Shift",
+        "Unable to fetch shift details. Check your connection and try again.",
+        [{ text: "OK" }]
+      );
+    }
+  }
+
+  async function handleRetry(shift: Shift) {
+    Alert.alert(
+      "Retry Submission?",
+      "This will re-send the shift report to the office.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Retry",
+          onPress: async () => {
+            try {
+              await api.post(`/shifts/${shift.id}/retry`);
+              Alert.alert("Sent", "Your shift report is being resubmitted. It may take a moment to process.");
+              load(true);
+            } catch (err: any) {
+              const msg = err?.response?.data?.error ?? err?.message ?? "Unknown error";
+              Alert.alert("Retry failed", msg);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // Filter out locally hidden shifts for display
   const visibleShifts = shifts.filter(s => !hidden.includes(s.id));
 
   // Weekly hours (from all shifts, not just visible)
@@ -185,7 +241,7 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
       </View>
 
       <Text style={styles.infoNote}>
-        ℹ️  Reports are stored securely · Manager has full access · Can be hidden from your list after 28 days
+        ℹ️  Completed shifts kept 33 days · Incomplete shifts can be deleted anytime · Manager always has full access
       </Text>
 
       {visibleShifts.length === 0 ? (
@@ -207,9 +263,9 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
               }
               return sum;
             }, 0);
-            const age       = daysSince(item.createdAt);
-            const canHide   = age >= 28;
-            const daysLeft  = Math.max(0, 90 - age);
+            const age        = daysSince(item.createdAt);
+            const isComplete = item.status === "completed";
+            const daysLeft   = isComplete ? Math.max(0, 33 - age) : null;
 
             return (
               <Card style={styles.shiftCard}>
@@ -255,17 +311,27 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
                 </TouchableOpacity>
 
                 <View style={styles.actionRow}>
-                  {daysLeft <= 14 && (
-                    <Text style={styles.autoHideNote}>Auto-hides from your list in {daysLeft} days</Text>
+                  {daysLeft !== null && daysLeft <= 7 && (
+                    <Text style={styles.autoHideNote}>Auto-removed in {daysLeft} day{daysLeft !== 1 ? "s" : ""}</Text>
+                  )}
+                  {!isComplete && (
+                    <Text style={styles.incompleteNote}>
+                      {item.status === "failed" ? "Submission failed" : "Incomplete"}
+                    </Text>
                   )}
                   <View style={{ flex: 1 }} />
-                  <TouchableOpacity
-                    style={[styles.hideBtn, !canHide && styles.hideBtnDisabled]}
-                    onPress={() => handleHide(item)}
-                  >
-                    <Text style={[styles.hideBtnText, !canHide && { color: COLOURS.muted }]}>
-                      {canHide ? "Hide" : `Hide in ${28 - age}d`}
-                    </Text>
+                  {item.status === "draft" && (
+                    <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(item)}>
+                      <Text style={styles.editBtnText}>Edit</Text>
+                    </TouchableOpacity>
+                  )}
+                  {item.status === "failed" && (
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => handleRetry(item)}>
+                      <Text style={styles.retryBtnText}>Retry</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
+                    <Text style={styles.deleteBtnText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </Card>
@@ -318,7 +384,11 @@ const styles = StyleSheet.create({
   tapHint:          { fontSize: 11, color: COLOURS.muted, fontStyle: "italic" },
   actionRow:        { flexDirection: "row", alignItems: "center", borderTopWidth: 1, borderTopColor: COLOURS.border, paddingTop: 8, marginTop: 4 },
   autoHideNote:     { fontSize: 11, color: COLOURS.muted },
-  hideBtn:          { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#f3f4f6", borderRadius: 6 },
-  hideBtnDisabled:  { backgroundColor: COLOURS.background },
-  hideBtnText:      { fontSize: 12, fontWeight: "600", color: COLOURS.muted },
+  incompleteNote:   { fontSize: 11, color: COLOURS.warning, fontWeight: "600" },
+  editBtn:          { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#eff6ff", borderRadius: 6, marginRight: 6 },
+  editBtnText:      { fontSize: 12, fontWeight: "600", color: "#1d4ed8" },
+  retryBtn:         { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#f0fdf4", borderRadius: 6, marginRight: 6 },
+  retryBtnText:     { fontSize: 12, fontWeight: "600", color: COLOURS.pass },
+  deleteBtn:        { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#fee2e2", borderRadius: 6 },
+  deleteBtnText:    { fontSize: 12, fontWeight: "600", color: COLOURS.fail },
 });

@@ -12,11 +12,13 @@ import type { EndSegmentScreenProps } from "../navigation/types";
 type Props = EndSegmentScreenProps;
 
 export default function EndSegmentScreen({ navigation }: Props) {
-  const { currentSegment, updateSegment, addSegment, updateShiftField } = useShift();
+  const { currentSegment, updateSegment, changeVehicle, updateShiftField } = useShift();
 
   React.useEffect(() => { updateShiftField("lastScreen", "EndSegment"); }, []);
 
-  const [currentOdometer, setCurrentOdometer] = useState(currentSegment.odometerEnd || "");
+  const [currentOdometer, setCurrentOdometer] = useState(currentSegment.odometerEnd  || "");
+  const [fuelAdded,       setFuelAdded]       = useState(currentSegment.fuelDrawn    || "");
+  const [adBlueAdded,     setAdBlueAdded]     = useState(currentSegment.adBlueDrawn  || "");
   const [notes,           setNotes]           = useState(currentSegment.notes);
   const [showChange,      setShowChange]       = useState(false);
 
@@ -47,7 +49,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
       Alert.alert("Error", "Odometer cannot be less than segment start");
       return;
     }
-    updateSegment({ odometerEnd: currentOdometer, notes });
+    updateSegment({ odometerEnd: currentOdometer, fuelDrawn: fuelAdded.trim(), adBlueDrawn: adBlueAdded.trim(), notes });
     navigation.navigate("EndShift");
   }
 
@@ -83,24 +85,25 @@ export default function EndSegmentScreen({ navigation }: Props) {
       return;
     }
 
-    updateSegment({ odometerEnd: currentOdometer, notes });
-
-    addSegment(
+    // Atomic: lock old segment readings + create new segment in one state update
+    changeVehicle(
+      currentOdometer,
+      "", // fuel not captured here — entered per-segment via ChangeVehicle
+      "",
       newVehicleClass,
       newTruckReg.trim().toUpperCase(),
       isClass1 && hasTrailer ? newTrailerReg.trim().toUpperCase() : "",
       isClass1 && hasTrailer,
       needsTruckCheck,
       needsTrailerCheck,
-      truckChanged ? newOdometerStart : currentOdometer, // new segment odometer start
     );
 
     if (needsTruckCheck) {
-      navigation.navigate("TruckChecklist", { type: "truck" });
+      navigation.navigate("TruckChecklist", { type: "truck", returnTo: "Jobs" });
     } else if (needsTrailerCheck) {
-      navigation.navigate("TrailerChecklist", { type: "trailer" });
+      navigation.navigate("TrailerChecklist", { type: "trailer", returnTo: "Jobs" });
     } else {
-      navigation.navigate("Deliveries");
+      navigation.navigate("Jobs");
     }
   }
 
@@ -153,6 +156,26 @@ export default function EndSegmentScreen({ navigation }: Props) {
               <Text style={styles.mileageValue}>{mileage} km</Text>
             </View>
           )}
+
+          <Text style={styles.fieldLabel}>Fuel added (litres) — optional</Text>
+          <TextInput
+            style={styles.input}
+            value={fuelAdded}
+            onChangeText={setFuelAdded}
+            placeholder="0"
+            keyboardType="decimal-pad"
+            placeholderTextColor={COLOURS.muted}
+          />
+
+          <Text style={styles.fieldLabel}>AdBlue added (litres) — optional</Text>
+          <TextInput
+            style={styles.input}
+            value={adBlueAdded}
+            onChangeText={setAdBlueAdded}
+            placeholder="0"
+            keyboardType="decimal-pad"
+            placeholderTextColor={COLOURS.muted}
+          />
 
           <Text style={styles.fieldLabel}>Segment Notes (optional)</Text>
           <TextInput

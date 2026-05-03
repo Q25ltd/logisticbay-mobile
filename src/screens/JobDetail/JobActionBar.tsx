@@ -58,10 +58,7 @@ export function JobActionBar({
           <Text style={styles.completedText}>✅ Job Delivered — well done!</Text>
         </View>
         <TouchableOpacity style={styles.nextJobBtn} onPress={onBackToJobs}>
-          <Text style={styles.nextJobBtnText}>📋 Back to Jobs →</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.endShiftBtn} onPress={onBackToJobs}>
-          <Text style={styles.endShiftBtnText}>🏁 No more jobs — End Shift →</Text>
+          <Text style={styles.nextJobBtnText}>← Back to Jobs</Text>
         </TouchableOpacity>
       </View>
     );
@@ -86,6 +83,4 @@ const styles = StyleSheet.create({
   completedText:    { fontSize: 15, fontWeight: "700", color: "#14532d" },
   nextJobBtn:       { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.accent, alignItems: "center" },
   nextJobBtnText:   { fontSize: 14, fontWeight: "700", color: COLOURS.white },
-  endShiftBtn:      { marginTop: 8, padding: 14, borderRadius: 10, backgroundColor: COLOURS.primary, alignItems: "center" },
-  endShiftBtnText:  { fontSize: 14, fontWeight: "700", color: COLOURS.white },
 });

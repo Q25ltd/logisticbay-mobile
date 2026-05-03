@@ -43,16 +43,22 @@ export interface Segment {
   startTime:        Date;
 }
 
+export type OdometerUnit = "km" | "miles";
+
 export interface ShiftDraft {
   shiftId:         number | null;
   lastScreen:      string;
+  lastJobId:       number | null;
+  odometerUnit:    OdometerUnit;
   shiftDate:       Date;
   oilWaterChecked: boolean;
   startTime:       string;
   finishTime:      string;
   breakMins:       number;
+  poaMins:         number;
   totalHours:      string;
   totalMins:       number;
+  workingMins:     number;
   fuelDrawn:       string;
   adBlueDrawn:     string;
   odometerEnd:     string;
@@ -100,13 +106,17 @@ function emptyDraft(): ShiftDraft {
   return {
     shiftId:         null,
     lastScreen:      "StartShift",
+    lastJobId:       null,
+    odometerUnit:    "km",
     shiftDate:       new Date(),
     oilWaterChecked: false,
     startTime:       "",
     finishTime:      "",
     breakMins:       0,
+    poaMins:         0,
     totalHours:      "",
     totalMins:       0,
+    workingMins:     0,
     fuelDrawn:       "",
     adBlueDrawn:     "",
     odometerEnd:     "",
@@ -130,6 +140,7 @@ interface ShiftContextType {
   removeDelivery:   (id: string) => void;
   updateDelivery:   (id: string, updates: Partial<DeliveryEntry>) => void;
   addSegment:       (vehicleClass: VehicleClass, truckReg: string, trailerReg: string, hasTrailer: boolean, needsTruckCheck: boolean, needsTrailerCheck: boolean, odometerStartOverride?: string) => void;
+  changeVehicle:    (prevOdomEnd: string, prevFuel: string, prevAdBlue: string, vehicleClass: VehicleClass, truckReg: string, trailerReg: string, hasTrailer: boolean, needsTruckCheck: boolean, needsTrailerCheck: boolean) => void;
   resetDraft:       () => void;
   setShiftId:       (id: number) => void;
   setVehicleClass:  (vc: VehicleClass) => void;
@@ -256,6 +267,35 @@ export function ShiftProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  function changeVehicle(
+    prevOdomEnd: string,
+    prevFuel:    string,
+    prevAdBlue:  string,
+    vehicleClass:      VehicleClass,
+    truckReg:          string,
+    trailerReg:        string,
+    hasTrailer:        boolean,
+    needsTruckCheck:   boolean,
+    needsTrailerCheck: boolean,
+  ) {
+    setDraft(d => {
+      const segs    = [...d.segments];
+      const lastIdx = segs.length - 1;
+      // Lock the departing vehicle's final readings atomically before creating the new segment
+      segs[lastIdx] = {
+        ...segs[lastIdx],
+        odometerEnd: prevOdomEnd || segs[lastIdx].odometerEnd || "",
+        fuelDrawn:   prevFuel    || segs[lastIdx].fuelDrawn   || "",
+        adBlueDrawn: prevAdBlue  || segs[lastIdx].adBlueDrawn || "",
+      };
+      // Carry the departing truck's final odometer as the new truck's start reading
+      const odomStart = segs[lastIdx].odometerEnd || segs[lastIdx].odometerStart || "";
+      const newSeg    = newSegment(vehicleClass, truckReg, trailerReg, hasTrailer, needsTruckCheck, needsTrailerCheck, segs.length + 1);
+      newSeg.odometerStart = odomStart;
+      return { ...d, truckReg, segments: [...segs, newSeg] };
+    });
+  }
+
   function resetDraft() {
     setDraftState(emptyDraft());
     clearPersistedDraft();
@@ -268,7 +308,7 @@ export function ShiftProvider({ children }: { children: React.ReactNode }) {
       draftRestored, currentSegment, setDraft,
       updateShiftField, updateSegment, setVehicleClass,
       addDelivery, removeDelivery, updateDelivery,
-      addSegment, resetDraft, setShiftId,
+      addSegment, changeVehicle, resetDraft, setShiftId,
     }}>
       {children}
     </ShiftContext.Provider>

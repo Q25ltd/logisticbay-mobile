@@ -70,20 +70,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <TouchableOpacity
               style={styles.resumeBtn}
               onPress={() => {
-                // New flow: if shift active and lastScreen not set or is old-style, go to Jobs
-                const SAFE_SCREENS = ["EndShift", "Review", "Jobs", "JobDetail"];
-                const rawScreen  = draft?.lastScreen;
-                const hasFinishTime = !!(draft?.finishTime);
+                const screen = draft?.lastScreen;
 
-                // If lastScreen is not set or is StartShift/old screen, go to Jobs
-                if (!rawScreen || !SAFE_SCREENS.includes(rawScreen)) {
+                if (screen === "JobDetail" && draft?.lastJobId) {
+                  navigation.navigate("JobDetail", { jobId: draft.lastJobId });
+                } else if (screen === "EndShift") {
+                  navigation.navigate("EndShift");
+                } else if (screen === "Review" && draft?.finishTime) {
+                  navigation.navigate("Review");
+                } else {
                   navigation.navigate("Jobs");
-                  return;
                 }
-
-                // If finish time not entered yet, don't go to Review
-                const screen = (!hasFinishTime && rawScreen === "Review") ? "EndShift" : rawScreen;
-                navigation.navigate(screen as any);
               }}
             >
               <Text style={styles.resumeBtnText}>Resume →</Text>

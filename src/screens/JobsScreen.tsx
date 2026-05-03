@@ -99,7 +99,7 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
-  const { draft, currentSegment, draftRestored, updateShiftField } = useShift();
+  const { draft, currentSegment, draftRestored, updateShiftField, updateSegment } = useShift();
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const hasTruck = !!(draft?.truckReg);
   const [showLastVehicle, setShowLastVehicle] = useState(false);
@@ -107,9 +107,9 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
   const [lastFuel,        setLastFuel]        = useState("");
   const [lastAdBlue,      setLastAdBlue]      = useState("");
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (hasActiveShift) updateShiftField("lastScreen", "Jobs");
-  }, [hasActiveShift]);
+  }, [hasActiveShift]));
 
   async function load(refresh = false) {
     if (refresh) setRefreshing(true); else setLoading(true);
@@ -152,25 +152,33 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
         <View style={{ width: 60 }} />
       </View>
 
-      {/* Truck banner */}
+      {/* Truck + Trailer banners */}
       {hasActiveShift && (
-        <TouchableOpacity
-          style={styles.truckBanner}
-          onPress={() => navigation.navigate("ChangeVehicle", { changeType: "truck" })}
-        >
-          <Text style={styles.bannerReg}>{draft?.truckReg || "No truck assigned"}</Text>
-          <Text style={styles.bannerHint}>tap to change truck</Text>
-        </TouchableOpacity>
-      )}
-      {/* Trailer banner */}
-      {hasActiveShift && currentSegment?.vehicleClass !== "van" && (
-        <TouchableOpacity
-          style={styles.trailerBanner}
-          onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
-        >
-          <Text style={styles.bannerReg}>{currentSegment?.trailerReg || "No trailer"}</Text>
-          <Text style={styles.bannerHint}>tap to change trailer</Text>
-        </TouchableOpacity>
+        <View style={styles.vehicleRow}>
+          <TouchableOpacity
+            style={styles.vehicleBannerTruck}
+            onPress={() => navigation.navigate("ChangeVehicle", { changeType: "truck" })}
+          >
+            <Text style={styles.vehicleBannerLabel}>🚛 Truck</Text>
+            <Text style={[styles.vehicleBannerReg, !draft?.truckReg && styles.vehicleBannerEmpty]}>
+              {draft?.truckReg || "No number plate"}
+            </Text>
+            <Text style={styles.vehicleBannerHint}>Tap to change</Text>
+          </TouchableOpacity>
+
+          {currentSegment?.vehicleClass !== "van" && (
+            <TouchableOpacity
+              style={styles.vehicleBannerTrailer}
+              onPress={() => navigation.navigate("ChangeVehicle", { changeType: "trailer" })}
+            >
+              <Text style={styles.vehicleBannerLabel}>🚚 Trailer</Text>
+              <Text style={[styles.vehicleBannerReg, !currentSegment?.trailerReg && styles.vehicleBannerEmpty]}>
+                {currentSegment?.trailerReg || "No number plate"}
+              </Text>
+              <Text style={styles.vehicleBannerHint}>Tap to change</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
       {/* Shift status warning */}
       {!hasActiveShift && (
@@ -350,9 +358,12 @@ export default function JobsScreen({ navigation }: JobsScreenProps) {
                     Alert.alert("Required", "Please enter the final odometer reading");
                     return;
                   }
-                  if (lastOdometer.trim()) updateShiftField("odometerEnd", lastOdometer.trim());
-                  if (lastFuel.trim())     updateShiftField("fuelDrawn",   lastFuel.trim());
-                  if (lastAdBlue.trim())   updateShiftField("adBlueDrawn", lastAdBlue.trim());
+                  // Save to the current segment so EndShift's per-vehicle summary picks it up
+                  updateSegment({
+                    odometerEnd: lastOdometer.trim() || "",
+                    fuelDrawn:   lastFuel.trim()     || "",
+                    adBlueDrawn: lastAdBlue.trim()   || "",
+                  });
                   setShowLastVehicle(false);
                   navigation.navigate("EndShift");
                 }}
@@ -426,14 +437,21 @@ const styles = StyleSheet.create({
   metaItem:       { fontSize: 12, color: COLOURS.muted },
   jobNotes:       { fontSize: 12, color: COLOURS.muted, marginTop: 6, fontStyle: "italic" },
   tapHint:        { fontSize: 11, color: COLOURS.muted, marginTop: 8, fontStyle: "italic" },
-  truckBanner:    { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#86efac", gap: 12 },
-  trailerBanner:  { flexDirection: "row", alignItems: "center", backgroundColor: "#eff6ff", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#bfdbfe", gap: 12 },
-  truckBannerIcon:  { fontSize: 24 },
-  truckBannerReg:   { fontSize: 16, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1 },
-  truckBannerHint:  { fontSize: 11, color: COLOURS.muted, marginTop: 1 },
-  truckBannerText:  { fontSize: 13, fontWeight: "700", color: "#14532d" },
-  bannerReg:      { fontSize: 18, fontWeight: "900", color: COLOURS.primary, letterSpacing: 2, textAlign: "center" },
-  bannerHint:     { fontSize: 11, color: COLOURS.muted, marginTop: 2, textAlign: "center" },
+  vehicleRow: {
+    flexDirection: "row", borderBottomWidth: 1, borderBottomColor: COLOURS.border,
+  },
+  vehicleBannerTruck: {
+    flex: 1, alignItems: "center", paddingVertical: 10, paddingHorizontal: 8,
+    backgroundColor: "#f0fdf4", borderRightWidth: 1, borderRightColor: "#86efac",
+  },
+  vehicleBannerTrailer: {
+    flex: 1, alignItems: "center", paddingVertical: 10, paddingHorizontal: 8,
+    backgroundColor: "#eff6ff",
+  },
+  vehicleBannerLabel: { fontSize: 10, fontWeight: "700", color: COLOURS.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  vehicleBannerReg:   { fontSize: 17, fontWeight: "900", color: COLOURS.primary, letterSpacing: 1.5, textAlign: "center" },
+  vehicleBannerEmpty: { fontSize: 13, fontWeight: "600", color: COLOURS.muted, letterSpacing: 0 },
+  vehicleBannerHint:  { fontSize: 11, color: COLOURS.muted, marginTop: 3 },
   spareBanner:    { backgroundColor: "#fef3c7", padding: 12, borderBottomWidth: 1, borderBottomColor: "#f59e0b" },
   spareBannerText:{ fontSize: 13, fontWeight: "600", color: "#92400e", textAlign: "center" },
   modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },

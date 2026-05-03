@@ -86,7 +86,7 @@ export default function ChecklistScreen({ navigation, route }: Props) {
     if (isTruck && vehicleClass === "class1" && currentSegment.hasTrailer && currentSegment.needsTrailerCheck) {
       return "TrailerChecklist";
     }
-    return returnTo ?? "Deliveries";
+    return returnTo ?? "Jobs";
   }
 
   const [items, setItems] = useState<CheckEntry[]>(existing);
