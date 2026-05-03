@@ -5,7 +5,7 @@
  * are in VehicleConfirmForm, CollectionForm, DeliveryForm, and JobActionBar.
  * Each sub-form receives only the state it needs plus callbacks to update it.
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import * as Location from "expo-location";
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
@@ -14,7 +14,9 @@ import {
 import { api } from "../../api";
 import { Card } from "../../components";
 import { COLOURS } from "../../theme";
+import { useFocusEffect } from "@react-navigation/native";
 import { useShift } from "../../ShiftContext";
+import type { VehicleClass } from "../../constants";
 import { enqueueJobEvent } from "../../offlineQueue";
 import { useIsOnline } from "../../hooks/useNetworkStatus";
 import { JOB_STATUS_LABELS, JOB_STATUS_COLOURS, EVENT_TYPE_LABELS } from "../../constants/jobStatuses";
@@ -50,7 +52,7 @@ const ACTIONS: Record<string, ActionStep | null> = {
 
 export default function JobDetailScreen({ navigation, route }: JobDetailScreenProps) {
   const { jobId } = route.params;
-  const { draft, currentSegment, draftRestored } = useShift();
+  const { draft, currentSegment, draftRestored, updateShiftField, updateSegment } = useShift();
   const hasActiveShift = draftRestored && !!draft?.shiftId;
   const viewOnly = !hasActiveShift;
   const isOnline = useIsOnline();
@@ -104,6 +106,13 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
   }
 
   useEffect(() => { loadJob(); }, [jobId]);
+
+  useFocusEffect(useCallback(() => {
+    if (hasActiveShift) {
+      updateShiftField("lastScreen", "JobDetail");
+      updateShiftField("lastJobId", jobId);
+    }
+  }, [hasActiveShift, jobId]));
 
   // ── Status update ───────────────────────────────────────────────────────────
 
@@ -249,6 +258,13 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
         onChangeTrailer={setTrailerReg}
         onChangeClass={setVehicleClass}
         onConfirm={() => {
+          updateSegment({
+            truckReg:     truckReg.trim().toUpperCase(),
+            trailerReg:   trailerReg.trim().toUpperCase(),
+            vehicleClass: vehicleClass as VehicleClass,
+            hasTrailer:   trailerReg.trim().length > 0,
+          });
+          updateShiftField("truckReg", truckReg.trim().toUpperCase());
           setVehicleConfirmed(true);
           setShowVehicleForm(false);
           doStatusUpdate("in_progress", {});

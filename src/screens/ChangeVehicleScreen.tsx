@@ -44,6 +44,9 @@ export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicle
     if ((changing === "truck" || changing === "both") && !newTruckReg.trim()) {
       Alert.alert("Required", "Please enter the truck registration"); return;
     }
+    if (currentTruck && !odometerEnd.trim()) {
+      Alert.alert("Required", `Please enter the final odometer reading for ${currentTruck}`); return;
+    }
 
     const finalTruck   = (changing === "truck"   || changing === "both") ? newTruckReg.trim().toUpperCase()   : currentTruck;
     const finalTrailer = (changing === "trailer" || changing === "both")
