@@ -33,12 +33,18 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
 
   const startTime   = draft.startTime   ?? "";
   const finishTime  = draft.finishTime  ?? "";
-  const totalHours  = draft.totalHours  ?? "";
+  const totalHours  = draft.totalHours  ?? "";   // working time (total − break − POA)
   const breakMins   = draft.breakMins   ?? 0;
   const poaMins     = draft.poaMins     ?? 0;
   const workingMins = draft.workingMins ?? 0;
   const fuelDrawn   = draft.fuelDrawn   ?? "";
   const adBlueDrawn = draft.adBlueDrawn ?? "";
+
+  // Derive paid hours for display when POA is present (working + POA = paid)
+  const paidMins     = workingMins + poaMins;
+  const paidHoursStr = poaMins > 0
+    ? `${Math.floor(paidMins / 60)}h ${(paidMins % 60).toString().padStart(2, "0")}m`
+    : "";
 
   async function handleSubmit() {
     if (submitLock.current) return;
@@ -142,10 +148,13 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
           <Text style={styles.sectionLabel}>Hours Today</Text>
           <View style={styles.hoursGrid}>
             {[
-              { label: "Start",      value: startTime  || "—" },
-              { label: "Finish",     value: finishTime || "—" },
-              { label: "Break",      value: breakMins > 0 ? `${breakMins}m` : "None" },
-              ...(poaMins > 0 ? [{ label: "POA", value: `${poaMins}m` }] : []),
+              { label: "Start",       value: startTime  || "—" },
+              { label: "Finish",      value: finishTime || "—" },
+              { label: "Break",       value: breakMins > 0 ? `${breakMins}m` : "None" },
+              ...(poaMins > 0 ? [
+                { label: "POA",       value: `${poaMins}m` },
+                { label: "Paid Hrs",  value: paidHoursStr },
+              ] : []),
               { label: poaMins > 0 ? "Working Hrs" : "Paid Hours", value: totalHours || "—", primary: true },
             ].map(item => (
               <View

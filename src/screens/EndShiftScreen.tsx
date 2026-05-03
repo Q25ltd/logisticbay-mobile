@@ -78,7 +78,7 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
     updateShiftField("finishTime",  formatted);
     updateShiftField("breakMins",   breakNum);
     updateShiftField("poaMins",     poaNum);
-    updateShiftField("totalHours",  hours.paidStr);
+    updateShiftField("totalHours",  hours.workingStr);
     updateShiftField("totalMins",   hours.paidMins);
     updateShiftField("workingMins", hours.workingMins);
     navigation.navigate("Review");
@@ -207,27 +207,64 @@ export function EndShiftScreen({ navigation }: EndShiftScreenProps) {
 
           {hours.paidStr !== "—" && (
             <View style={styles.paidResult}>
-              <View style={styles.paidResultRow}>
-                {(poaNum > 0 ? [
-                  { label: "Total Shift", value: hours.totalStr },
-                  { label: "Break+POA",   value: `${breakNum + poaNum}m` },
-                  { label: "Working",     value: hours.workingStr, accent: true },
-                ] : [
-                  { label: "Total Shift", value: hours.totalStr },
-                  { label: "Break",       value: hours.breakStr },
-                  { label: "Paid Hours",  value: hours.paidStr, accent: true },
-                ]).map((item, i, arr) => (
-                  <React.Fragment key={item.label}>
-                    <View style={styles.paidResultItem}>
-                      <Text style={styles.paidResultLabel}>{item.label}</Text>
-                      <Text style={[styles.paidResultValue, (item as any).accent && { color: COLOURS.accent, fontSize: 20 }]}>
-                        {item.value}
-                      </Text>
-                    </View>
-                    {i < arr.length - 1 && <Text style={styles.paidResultSep}>{i === 0 ? "−" : "="}</Text>}
-                  </React.Fragment>
-                ))}
-              </View>
+              {poaNum > 0 ? (
+                <>
+                  {/* Row 1: payroll calculation */}
+                  <View style={styles.paidResultRow}>
+                    {[
+                      { label: "Total Shift", value: hours.totalStr },
+                      { label: "Break",       value: hours.breakStr },
+                      { label: "Paid Hours",  value: hours.paidStr },
+                    ].map((item, i, arr) => (
+                      <React.Fragment key={item.label}>
+                        <View style={styles.paidResultItem}>
+                          <Text style={styles.paidResultLabel}>{item.label}</Text>
+                          <Text style={styles.paidResultValue}>{item.value}</Text>
+                        </View>
+                        {i < arr.length - 1 && <Text style={styles.paidResultSep}>{i === 0 ? "−" : "="}</Text>}
+                      </React.Fragment>
+                    ))}
+                  </View>
+                  {/* Divider */}
+                  <View style={styles.paidResultDivider} />
+                  {/* Row 2: legal working time calculation */}
+                  <View style={styles.paidResultRow}>
+                    {[
+                      { label: "Paid Hours",   value: hours.paidStr },
+                      { label: "POA",          value: hours.poaStr },
+                      { label: "Working Time", value: hours.workingStr, accent: true },
+                    ].map((item, i, arr) => (
+                      <React.Fragment key={item.label}>
+                        <View style={styles.paidResultItem}>
+                          <Text style={styles.paidResultLabel}>{item.label}</Text>
+                          <Text style={[styles.paidResultValue, (item as any).accent && { color: COLOURS.accent, fontSize: 20 }]}>
+                            {item.value}
+                          </Text>
+                        </View>
+                        {i < arr.length - 1 && <Text style={styles.paidResultSep}>{i === 0 ? "−" : "="}</Text>}
+                      </React.Fragment>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <View style={styles.paidResultRow}>
+                  {[
+                    { label: "Total Shift", value: hours.totalStr },
+                    { label: "Break",       value: hours.breakStr },
+                    { label: "Paid Hours",  value: hours.paidStr, accent: true },
+                  ].map((item, i, arr) => (
+                    <React.Fragment key={item.label}>
+                      <View style={styles.paidResultItem}>
+                        <Text style={styles.paidResultLabel}>{item.label}</Text>
+                        <Text style={[styles.paidResultValue, (item as any).accent && { color: COLOURS.accent, fontSize: 20 }]}>
+                          {item.value}
+                        </Text>
+                      </View>
+                      {i < arr.length - 1 && <Text style={styles.paidResultSep}>{i === 0 ? "−" : "="}</Text>}
+                    </React.Fragment>
+                  ))}
+                </View>
+              )}
             </View>
           )}
         </Card>
@@ -371,7 +408,8 @@ const styles = StyleSheet.create({
   breakBtnActive:     { backgroundColor: COLOURS.primary, borderColor: COLOURS.primary },
   breakBtnText:       { fontSize: 12, fontWeight: "600", color: COLOURS.primary },
   breakBtnTextActive: { color: COLOURS.white },
-  paidResult:      { backgroundColor: COLOURS.primary, borderRadius: 10, padding: 14, marginTop: 8 },
+  paidResult:        { backgroundColor: COLOURS.primary, borderRadius: 10, padding: 14, marginTop: 8 },
+  paidResultDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.15)", marginVertical: 10 },
   paidResultRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   paidResultItem:  { alignItems: "center", flex: 1 },
   paidResultLabel: { color: "rgba(255,255,255,0.6)", fontSize: 9, textTransform: "uppercase", marginBottom: 4 },
