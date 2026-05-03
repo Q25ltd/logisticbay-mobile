@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from "../api";
 import { COLOURS, Card } from "../components";
 

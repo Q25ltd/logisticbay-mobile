@@ -8,9 +8,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import * as Location from "expo-location";
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert, TextInput,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from "../../api";
 import { Card } from "../../components";
 import { COLOURS } from "../../theme";

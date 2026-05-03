@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, SafeAreaView, Alert,
+  TextInput, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button } from "../components";
 import { useShift, type CheckEntry, type CheckResult } from "../ShiftContext";
 import { getChecksForClass } from "../constants";

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, TextInput, ActivityIndicator, Modal,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from "expo-location";
 import { api } from "../api";
 import { COLOURS, AppFooter, Button, Card } from "../components";

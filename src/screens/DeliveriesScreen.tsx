@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, SafeAreaView, Alert,
+  TextInput, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button, Card } from "../components";
 import { useShift, type DeliveryEntry } from "../ShiftContext";
 import { api } from "../api";

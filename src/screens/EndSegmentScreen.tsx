@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, Switch, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 import { VEHICLE_CLASSES, type VehicleClass } from "../constants";

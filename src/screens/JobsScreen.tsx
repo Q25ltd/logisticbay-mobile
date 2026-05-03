@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, FlatList, SafeAreaView,
+  View, Text, StyleSheet, FlatList,
   TouchableOpacity, ActivityIndicator, RefreshControl,
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
 import { COLOURS, AppFooter, Card } from "../components";

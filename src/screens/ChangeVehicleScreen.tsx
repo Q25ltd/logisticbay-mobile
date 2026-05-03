@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, TextInput,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
 import type { ChangeVehicleScreenProps } from "../navigation/types";

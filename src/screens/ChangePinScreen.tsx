@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import {
-  View, Text, StyleSheet, SafeAreaView,
+  View, Text, StyleSheet,
   TouchableOpacity, Alert, TextInput,
   KeyboardAvoidingView, ScrollView, Platform,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button } from "../components";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";

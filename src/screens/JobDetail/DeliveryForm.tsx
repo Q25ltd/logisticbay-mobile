@@ -1,7 +1,8 @@
 import React from "react";
 import {
-  View, Text, ScrollView, SafeAreaView, TouchableOpacity, TextInput, Alert,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from "../../components";
 import { COLOURS } from "../../theme";
 import { jobDetailStyles as s } from "./jobDetailStyles";

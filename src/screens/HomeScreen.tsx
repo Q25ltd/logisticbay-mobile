@@ -1,8 +1,9 @@
 import React from "react";
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from "../AuthContext";
 import { useShift } from "../ShiftContext";
 import { COLOURS, AppFooter } from "../components";

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, SafeAreaView,
+  View, Text, StyleSheet,
   TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { COLOURS, Button } from "../components";
