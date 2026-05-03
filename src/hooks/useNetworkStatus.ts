@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
-import { flushQueue, getQueueLength, type QueuedJobEvent } from "../offlineQueue";
+import { flushQueue, getQueueStats, type QueuedJobEvent } from "../offlineQueue";
 
-export type SyncStatus = "online" | "offline" | "syncing" | "synced";
+export type SyncStatus = "online" | "offline" | "syncing" | "synced" | "failed";
 
 interface NetworkStatus {
   isOnline:    boolean;
   syncStatus:  SyncStatus;
   queueSize:   number;
+  failedCount: number;
   triggerSync: () => Promise<void>;
 }
 
@@ -17,6 +18,7 @@ let _status: NetworkStatus = {
   isOnline:    true,
   syncStatus:  "online",
   queueSize:   0,
+  failedCount: 0,
   triggerSync: async () => {},
 };
 
@@ -31,11 +33,11 @@ export function useNetworkStatus(): NetworkStatus {
 
   const runFlush = useCallback(async () => {
     if (isSyncing.current) return;
-    const size = await getQueueLength();
-    if (size === 0) return;
+    const stats = await getQueueStats();
+    if (stats.total === 0) return;
 
     isSyncing.current = true;
-    notify({ ..._status, syncStatus: "syncing", queueSize: size });
+    notify({ ..._status, syncStatus: "syncing", queueSize: stats.total, failedCount: stats.failed });
 
     try {
       const { api } = await import("../api");
@@ -54,21 +56,27 @@ export function useNetworkStatus(): NetworkStatus {
             result:        r.status,
           }));
         },
-        (remaining) => {
-          notify({ ..._status, syncStatus: "syncing", queueSize: remaining });
+        async (remaining) => {
+          const nextStats = await getQueueStats();
+          notify({ ..._status, syncStatus: "syncing", queueSize: remaining, failedCount: nextStats.failed });
         },
       );
 
       if (sent > 0) {
-        notify({ ..._status, isOnline: true, syncStatus: "synced", queueSize: 0 });
-        setTimeout(() => {
-          notify({ ..._status, isOnline: true, syncStatus: "online", queueSize: 0 });
-        }, 3000);
+        const nextStats = await getQueueStats();
+        notify({ ..._status, isOnline: true, syncStatus: nextStats.failed > 0 ? "failed" : "synced", queueSize: nextStats.total, failedCount: nextStats.failed });
+        if (nextStats.failed === 0) {
+          setTimeout(() => {
+            notify({ ..._status, isOnline: true, syncStatus: "online", queueSize: 0, failedCount: 0 });
+          }, 3000);
+        }
       } else {
-        notify({ ..._status, isOnline: true, syncStatus: "online" });
+        const nextStats = await getQueueStats();
+        notify({ ..._status, isOnline: true, syncStatus: nextStats.failed > 0 ? "failed" : "online", queueSize: nextStats.total, failedCount: nextStats.failed });
       }
     } catch {
-      notify({ ..._status, syncStatus: "online" });
+      const nextStats = await getQueueStats();
+      notify({ ..._status, syncStatus: nextStats.failed > 0 ? "failed" : "online", queueSize: nextStats.total, failedCount: nextStats.failed });
     } finally {
       isSyncing.current = false;
     }
@@ -80,13 +88,13 @@ export function useNetworkStatus(): NetworkStatus {
 
     const unsubscribe = NetInfo.addEventListener(async (state: NetInfoState) => {
       const online = !!(state.isConnected && state.isInternetReachable !== false);
-      const size   = await getQueueLength();
+      const stats  = await getQueueStats();
 
       if (online) {
-        notify({ isOnline: true, syncStatus: "online", queueSize: size, triggerSync: runFlush });
-        if (size > 0) runFlush();
+        notify({ isOnline: true, syncStatus: stats.failed > 0 ? "failed" : "online", queueSize: stats.total, failedCount: stats.failed, triggerSync: runFlush });
+        if (stats.total > 0) runFlush();
       } else {
-        notify({ isOnline: false, syncStatus: "offline", queueSize: size, triggerSync: runFlush });
+        notify({ isOnline: false, syncStatus: "offline", queueSize: stats.total, failedCount: stats.failed, triggerSync: runFlush });
       }
     });
 

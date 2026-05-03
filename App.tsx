@@ -50,7 +50,7 @@ function InitialScreen({ navigation }: InitialScreenProps) {
 
 function AppNavigator() {
   const { user, loading } = useAuth();
-  const { syncStatus, queueSize } = useNetworkStatus();
+  const { syncStatus, queueSize, failedCount, triggerSync } = useNetworkStatus();
 
   if (loading) {
     return (
@@ -62,7 +62,12 @@ function AppNavigator() {
 
   return (
     <>
-      <OfflineBanner syncStatus={syncStatus} queueSize={queueSize} />
+      <OfflineBanner
+        syncStatus={syncStatus}
+        queueSize={queueSize}
+        failedCount={failedCount}
+        onRetry={triggerSync}
+      />
       <NavigationContainer>
       {/* eslint-disable @typescript-eslint/no-explicit-any */}
       <Stack.Navigator screenOptions={{ headerShown: false }}>

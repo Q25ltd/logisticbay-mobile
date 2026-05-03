@@ -62,6 +62,14 @@ export async function getQueueLength(): Promise<number> {
   return queue.length;
 }
 
+export async function getQueueStats(): Promise<{ total: number; failed: number }> {
+  const queue = await readQueue();
+  return {
+    total:  queue.length,
+    failed: queue.filter(e => e.status === "failed").length,
+  };
+}
+
 export async function clearQueue(): Promise<void> {
   await AsyncStorage.removeItem(QUEUE_KEY);
 }
