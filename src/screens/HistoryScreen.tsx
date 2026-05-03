@@ -36,10 +36,18 @@ function fmtDate(iso: string) {
 }
 
 function statusColour(s: string) {
-  if (s === "completed") return COLOURS.pass;
+  if (s === "completed" || s === "submitted") return COLOURS.pass;
   if (s === "failed")    return COLOURS.fail;
   if (s === "draft")     return COLOURS.warning;
   return "#f59e0b";
+}
+
+function statusLabel(s: string) {
+  if (s === "submitted") return "SUBMITTED";
+  if (s === "completed") return "COMPLETED";
+  if (s === "failed")    return "FAILED";
+  if (s === "draft")     return "DRAFT";
+  return s.toUpperCase();
 }
 
 function getWeekStart(date: Date): Date {
@@ -264,7 +272,7 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
               return sum;
             }, 0);
             const age        = daysSince(item.createdAt);
-            const isComplete = item.status === "completed";
+            const isComplete = item.status === "completed" || item.status === "submitted";
             const daysLeft   = isComplete ? Math.max(0, 33 - age) : null;
 
             return (
@@ -282,7 +290,7 @@ export default function HistoryScreen({ navigation }: { navigation: any }) {
                       </Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusColour(item.status) }]}>
-                      <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+                      <Text style={styles.statusText}>{statusLabel(item.status)}</Text>
                     </View>
                   </View>
 
