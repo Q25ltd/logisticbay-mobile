@@ -29,7 +29,7 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 
-interface AvailInfo { available: boolean; slotsLeft: number; count: number; }
+interface AvailInfo { available: boolean; overLimit?: boolean; slotsLeft: number; count: number; }
 type AvailMap = Record<string, AvailInfo>;
 
 function toDateStr(y: number, m: number, d: number): string {
@@ -118,7 +118,7 @@ export default function HolidayScreen({ navigation }: { navigation: any }) {
       .then(res => {
         const map: AvailMap = {};
         for (const d of (res.data.days ?? [])) {
-          map[d.date] = { available: d.available, slotsLeft: d.slotsLeft, count: d.count };
+          map[d.date] = { available: d.available, overLimit: d.overLimit, slotsLeft: d.slotsLeft, count: d.count };
         }
         setAvailability(map);
       })
@@ -190,23 +190,37 @@ export default function HolidayScreen({ navigation }: { navigation: any }) {
   }
 
   const fullDays  = hasFullDaysInRange();
-  const canSubmit = !!selectedStart && !!selectedEnd && !!reason && !fullDays;
+  const canSubmit = !!selectedStart && !!selectedEnd && !!reason;
 
   async function handleSubmit() {
     if (!selectedStart || !selectedEnd) {
       Alert.alert("No dates selected", "Please tap a start date then an end date on the calendar.");
       return;
     }
+    if (!reason) { Alert.alert("Required", "Please select a reason"); return; }
+
     if (fullDays) {
-      Alert.alert("Dates unavailable", "One or more days are fully booked. Choose different dates or speak to your manager.");
+      Alert.alert(
+        "Holiday limit warning",
+        "One or more selected days are already at the company holiday limit. You can still send the request, but planner approval is needed as an exception.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Send anyway", onPress: () => submitHolidayRequest() },
+        ],
+      );
       return;
     }
-    if (!reason) { Alert.alert("Required", "Please select a reason"); return; }
+
+    await submitHolidayRequest();
+  }
+
+  async function submitHolidayRequest() {
+    if (!selectedStart || !selectedEnd) return;
 
     setSubmitting(true);
     try {
-      await api.post("/holiday-requests", { startDate: selectedStart, endDate: selectedEnd, reason, note });
-      Alert.alert("Request received", "We've got your holiday request and will get back to you as soon as we can.");
+      const res = await api.post("/holiday-requests", { startDate: selectedStart, endDate: selectedEnd, reason, note });
+      Alert.alert("Request received", res.data?.warning ?? "We've got your holiday request and will get back to you as soon as we can.");
       setShowForm(false);
       setSelectedStart(null); setSelectedEnd(null);
       setReason(""); setNote("");
