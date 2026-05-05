@@ -54,7 +54,9 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
     );
   }
 
-  const allChecks    = (shift.segments ?? []).flatMap((s: any) => [...(s.truckChecks ?? []), ...(s.trailerChecks ?? [])]);
+  const segments     = shift.segments ?? [];
+  const isSpareShift = segments.length === 0;
+  const allChecks    = segments.flatMap((s: any) => [...(s.truckChecks ?? []), ...(s.trailerChecks ?? [])]);
   const hasDefects   = allChecks.some((c: any) => c.result === "fail" || c.ok === false);
   const totalMileage = (shift.segments ?? []).reduce((sum: number, s: any) => {
     if (s.odometerEnd && s.odometerStart && s.odometerEnd > s.odometerStart) {
@@ -75,6 +77,13 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
 
       <ScrollView style={styles.scroll} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
+        {isSpareShift && (
+          <View style={styles.spareBanner}>
+            <Text style={styles.spareTitle}>Spare / standby shift</Text>
+            <Text style={styles.spareText}>No vehicle was assigned, so no walkaround check was required.</Text>
+          </View>
+        )}
+
         {hasDefects && (
           <View style={styles.defectBanner}>
             <Text style={styles.defectTitle}>⚠ Defects were recorded on this shift</Text>
@@ -87,7 +96,7 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
             { label: "Start",    value: shift.startTime  || "—" },
             { label: "Finish",   value: shift.endTime    || "—" },
             { label: "Break",    value: shift.breakMins && parseInt(shift.breakMins) > 0 ? `${shift.breakMins}m` : "None" },
-            { label: "Paid Hrs", value: shift.totalHours || "—", accent: true },
+            { label: "Working Hrs", value: shift.totalHours || "—", accent: true },
           ].map((item, i, arr) => (
             <React.Fragment key={item.label}>
               <View style={styles.hoursBarItem}>
@@ -107,7 +116,7 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
           <Text style={styles.row}>📅 {fmtDate(shift.shiftDate)}</Text>
           <Text style={styles.row}>👤 {shift.driver?.name ?? shift.driverName}</Text>
           <Text style={styles.row}>📍 Total mileage: <Text style={styles.bold}>{totalMileage > 0 ? totalMileage.toLocaleString() + " km" : "—"}</Text></Text>
-          <Text style={styles.row}>✅ Checks: <Text style={{ color: hasDefects ? COLOURS.fail : COLOURS.pass, fontWeight: "700" }}>{hasDefects ? "Defects recorded" : "All passed"}</Text></Text>
+          <Text style={styles.row}>✅ Checks: <Text style={{ color: isSpareShift ? COLOURS.muted : hasDefects ? COLOURS.fail : COLOURS.pass, fontWeight: "700" }}>{isSpareShift ? "No vehicle check required" : hasDefects ? "Defects recorded" : "All passed"}</Text></Text>
           {shift.fuelDrawn   ? <Text style={styles.row}>⛽ Fuel: {shift.fuelDrawn}</Text>   : null}
           {shift.adBlueDrawn ? <Text style={styles.row}>🔵 AdBlue: {shift.adBlueDrawn}</Text> : null}
           {shift.nightOut    ? <Text style={styles.row}>🌙 Night out</Text>                   : null}
@@ -204,6 +213,12 @@ const styles = StyleSheet.create({
     padding: 12, borderRadius: 8, marginBottom: 12,
   },
   defectTitle:      { color: COLOURS.fail, fontWeight: "700", fontSize: 14 },
+  spareBanner: {
+    backgroundColor: "#eff6ff", borderLeftWidth: 3, borderLeftColor: COLOURS.accent,
+    padding: 12, borderRadius: 8, marginBottom: 12,
+  },
+  spareTitle:       { color: COLOURS.primary, fontWeight: "700", fontSize: 14 },
+  spareText:        { color: COLOURS.muted, fontSize: 13, marginTop: 4 },
   hoursBar: {
     flexDirection: "row", backgroundColor: COLOURS.primary,
     borderRadius: 12, padding: 14, marginBottom: 12,
