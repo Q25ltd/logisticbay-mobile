@@ -96,7 +96,7 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
             { label: "Start",    value: shift.startTime  || "—" },
             { label: "Finish",   value: shift.endTime    || "—" },
             { label: "Break",    value: shift.breakMins && parseInt(shift.breakMins) > 0 ? `${shift.breakMins}m` : "None" },
-            { label: "Working Hrs", value: shift.totalHours || "—", accent: true },
+            { label: isSpareShift ? "Paid Hrs" : "Working Hrs", value: shift.totalHours || "—", accent: true },
           ].map((item, i, arr) => (
             <React.Fragment key={item.label}>
               <View style={styles.hoursBarItem}>
