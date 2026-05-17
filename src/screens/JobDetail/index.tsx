@@ -17,7 +17,7 @@ import { Card } from "../../components";
 import { COLOURS } from "../../theme";
 import { useFocusEffect } from "@react-navigation/native";
 import { useShift } from "../../ShiftContext";
-import type { VehicleClass } from "../../constants";
+import { normalizeVehicleClass, type VehicleClass } from "../../constants";
 import { enqueueJobEvent } from "../../offlineQueue";
 import { useIsOnline } from "../../hooks/useNetworkStatus";
 import { JOB_STATUS_LABELS, JOB_STATUS_COLOURS, EVENT_TYPE_LABELS } from "../../constants/jobStatuses";
@@ -75,7 +75,7 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
   // ── Vehicle confirmation state ──────────────────────────────────────────────
   const [truckReg,         setTruckReg]         = useState("");
   const [trailerReg,       setTrailerReg]        = useState("");
-  const [vehicleClass,     setVehicleClass]      = useState("class1");
+  const [vehicleClass,     setVehicleClass]      = useState<VehicleClass>("tractor");
   const [vehicleConfirmed, setVehicleConfirmed]  = useState(false);
 
   // ── Collection state ────────────────────────────────────────────────────────
@@ -96,7 +96,9 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
       setJob(res.data);
       if (res.data.assignedTruck)   setTruckReg(res.data.assignedTruck);
       if (res.data.assignedTrailer) setTrailerReg(res.data.assignedTrailer);
-      if (res.data.vehicleClass)    setVehicleClass(res.data.vehicleClass);
+      if (res.data.reqBodyCategory || res.data.vehicleClass) {
+        setVehicleClass(normalizeVehicleClass(res.data.reqBodyCategory || res.data.vehicleClass));
+      }
       if (res.data.actualQuantity)  setDeliveredQty(res.data.actualQuantity);
       if (res.data.actualUnit)      setActualUnit(res.data.actualUnit);
     } catch {
@@ -120,6 +122,8 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
   async function doStatusUpdate(status: string, extra: Record<string, unknown>) {
     setSaving(true);
     const clientTimestamp = new Date().toISOString();
+    const { v4: uuidv4 } = await import("uuid");
+    const clientEventId = uuidv4();
 
     let gpsLat: number | undefined;
     let gpsLng: number | undefined;
@@ -157,7 +161,7 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
     }
 
     try {
-      await api.patch(`/jobs/${jobId}/status`, { status, ...extra, clientTimestamp, gpsLat, gpsLng });
+      await api.patch(`/jobs/${jobId}/status`, { status, ...extra, clientEventId, clientTimestamp, gpsLat, gpsLng });
       await loadJob();
     } catch (err: unknown) {
       Alert.alert("Error", (err as any)?.response?.data?.error ?? "Failed to update");
@@ -257,12 +261,12 @@ export default function JobDetailScreen({ navigation, route }: JobDetailScreenPr
         onBack={() => setShowVehicleForm(false)}
         onChangeTruck={setTruckReg}
         onChangeTrailer={setTrailerReg}
-        onChangeClass={setVehicleClass}
+        onChangeClass={(value) => setVehicleClass(normalizeVehicleClass(value))}
         onConfirm={() => {
           updateSegment({
             truckReg:     truckReg.trim().toUpperCase(),
             trailerReg:   trailerReg.trim().toUpperCase(),
-            vehicleClass: vehicleClass as VehicleClass,
+            vehicleClass,
             hasTrailer:   trailerReg.trim().length > 0,
           });
           updateShiftField("truckReg", truckReg.trim().toUpperCase());

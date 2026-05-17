@@ -53,7 +53,7 @@ api.interceptors.response.use(
         const refreshToken = await getRefreshToken();
         const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
         const newToken = res.data.accessToken;
-        await saveTokens(newToken, refreshToken!);
+        await saveTokens(newToken, res.data.refreshToken);
         original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
       } catch {

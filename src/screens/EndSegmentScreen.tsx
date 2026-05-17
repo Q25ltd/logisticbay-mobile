@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
-import { VEHICLE_CLASSES, type VehicleClass } from "../constants";
+import { VEHICLE_CLASSES, normalizeVehicleClass, type VehicleClass } from "../constants";
 import type { EndSegmentScreenProps } from "../navigation/types";
 
 type Props = EndSegmentScreenProps;
@@ -26,16 +26,16 @@ export default function EndSegmentScreen({ navigation }: Props) {
 
   const [truckChanged,    setTruckChanged]    = useState(false);
   const [trailerChanged,  setTrailerChanged]  = useState(false);
-  const [newVehicleClass, setNewVehicleClass] = useState<VehicleClass>(currentSegment.vehicleClass);
+  const [newVehicleClass, setNewVehicleClass] = useState<VehicleClass>(normalizeVehicleClass(currentSegment.vehicleClass));
   const [newTruckReg,     setNewTruckReg]     = useState(currentSegment.truckReg);
   const [newTrailerReg,   setNewTrailerReg]   = useState(currentSegment.trailerReg);
   const [hasTrailer,      setHasTrailer]      = useState(currentSegment.hasTrailer);
   const [newOdometerStart, setNewOdometerStart] = useState("");
 
-  const classChanged     = newVehicleClass !== currentSegment.vehicleClass;
-  const isClass1         = newVehicleClass === "class1";
+  const classChanged     = newVehicleClass !== normalizeVehicleClass(currentSegment.vehicleClass);
+  const isTractor         = newVehicleClass === "tractor";
   const needsTruckCheck  = truckChanged || classChanged;
-  const needsTrailerCheck= (trailerChanged || classChanged) && isClass1 && hasTrailer;
+  const needsTrailerCheck= (trailerChanged || classChanged) && isTractor && hasTrailer;
 
   const mileage =
     currentOdometer && currentSegment.odometerStart
@@ -72,7 +72,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
       Alert.alert("Required", "Vehicle registration is required");
       return;
     }
-    if (isClass1 && hasTrailer && !newTrailerReg.trim()) {
+    if (isTractor && hasTrailer && !newTrailerReg.trim()) {
       Alert.alert("Required", "Trailer registration is required");
       return;
     }
@@ -94,8 +94,8 @@ export default function EndSegmentScreen({ navigation }: Props) {
       adBlueAdded.trim(),
       newVehicleClass,
       newTruckReg.trim().toUpperCase(),
-      isClass1 && hasTrailer ? newTrailerReg.trim().toUpperCase() : "",
-      isClass1 && hasTrailer,
+      isTractor && hasTrailer ? newTrailerReg.trim().toUpperCase() : "",
+      isTractor && hasTrailer,
       needsTruckCheck,
       needsTrailerCheck,
     );
@@ -125,7 +125,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
         <Card style={{ margin: 16, marginBottom: 8 }}>
           <Text style={styles.sectionLabel}>Current Segment {currentSegment.segmentNumber}</Text>
           <Text style={styles.vehicleText}>
-            {currentSegment.vehicleClass === "van" ? "🚐" : currentSegment.vehicleClass === "class2" ? "🚚" : "🚛"}{" "}
+            {currentSegment.vehicleClass === "van" ? "🚐" : currentSegment.vehicleClass === "rigid" ? "🚚" : "🚛"}{" "}
             {currentSegment.truckReg}
             {currentSegment.hasTrailer ? `  +  📦 ${currentSegment.trailerReg}` : ""}
           </Text>
@@ -217,7 +217,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
             <Text style={styles.sectionLabel}>New Vehicle</Text>
 
             {/* Vehicle class selector */}
-            <Text style={styles.fieldLabel}>Vehicle Class</Text>
+            <Text style={styles.fieldLabel}>Vehicle category</Text>
             <View style={styles.classRow}>
               {VEHICLE_CLASSES.map(vc => (
                 <TouchableOpacity
@@ -225,10 +225,10 @@ export default function EndSegmentScreen({ navigation }: Props) {
                   style={[styles.classBtn, newVehicleClass === vc.key && styles.classBtnActive]}
                   onPress={() => {
                     setNewVehicleClass(vc.key);
-                    if (vc.key !== "class1") setHasTrailer(false);
-                    if (vc.key !== currentSegment.vehicleClass) {
+                    if (vc.key !== "tractor") setHasTrailer(false);
+                    if (vc.key !== normalizeVehicleClass(currentSegment.vehicleClass)) {
                       setTruckChanged(true);
-                      setTrailerChanged(vc.key === "class1");
+                      setTrailerChanged(vc.key === "tractor");
                     }
                   }}
                 >
@@ -256,7 +256,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
                       🚛 Truck/Unit changed
                     </Text>
                   </TouchableOpacity>
-                  {currentSegment.vehicleClass === "class1" && (
+                  {currentSegment.vehicleClass === "tractor" && (
                     <TouchableOpacity
                       style={[styles.changedBtn, trailerChanged && styles.changedBtnActive]}
                       onPress={() => setTrailerChanged(!trailerChanged)}
@@ -275,11 +275,11 @@ export default function EndSegmentScreen({ navigation }: Props) {
               <View style={styles.checksRequired}>
                 <Text style={styles.checksRequiredLabel}>Checks required for new segment:</Text>
                 {needsTruckCheck
-                  ? <Text style={styles.checksRequiredItem}>✓ {newVehicleClass === "van" ? "Van" : newVehicleClass === "class2" ? "Rigid HGV" : "Truck"} walk round check</Text>
+                  ? <Text style={styles.checksRequiredItem}>✓ {newVehicleClass === "van" ? "Van" : newVehicleClass === "rigid" ? "Rigid HGV" : "Truck"} walk round check</Text>
                   : <Text style={styles.checksRequiredSkip}>✗ Truck checks — skipped (no change)</Text>}
                 {needsTrailerCheck
                   ? <Text style={styles.checksRequiredItem}>✓ Trailer walk round check</Text>
-                  : isClass1
+                  : isTractor
                     ? <Text style={styles.checksRequiredSkip}>✗ Trailer checks — skipped (no change)</Text>
                     : null}
                 {!needsTruckCheck && !needsTrailerCheck && (truckChanged || trailerChanged || classChanged) && (
@@ -314,7 +314,7 @@ export default function EndSegmentScreen({ navigation }: Props) {
               </>
             )}
 
-            {newVehicleClass === "class1" && (
+            {newVehicleClass === "tractor" && (
               <>
                 <View style={styles.switchRow}>
                   <Text style={styles.fieldLabel}>Running with Trailer?</Text>

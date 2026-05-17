@@ -131,7 +131,7 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
             ? (seg.odometerEnd - seg.odometerStart).toLocaleString() + " km"
             : "—";
           const vehicleLabel =
-            seg.vehicleClass === "class2" ? "Rigid" :
+            seg.vehicleClass === "rigid" ? "Rigid" :
             seg.vehicleClass === "van"    ? "Van" :
             seg.trailerReg ? "" : "Solo";
 
@@ -148,7 +148,7 @@ export default function ShiftDetailScreen({ navigation, route }: { navigation: a
               {(seg.truckChecks ?? []).length > 0 && (
                 <>
                   <Text style={[styles.sectionLabel, { marginTop: 10 }]}>
-                    {seg.vehicleClass === "van" ? "Van" : seg.vehicleClass === "class2" ? "Rigid HGV" : "Truck"} Checks
+                    {seg.vehicleClass === "van" ? "Van" : seg.vehicleClass === "rigid" ? "Rigid HGV" : "Truck"} Checks
                   </Text>
                   {(seg.truckChecks ?? []).map((c: any) => (
                     <View key={c.key} style={styles.checkRow}>

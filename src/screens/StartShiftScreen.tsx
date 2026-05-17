@@ -8,6 +8,7 @@ import * as Location from "expo-location";
 import { api } from "../api";
 import { COLOURS, AppFooter, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
+import { normalizeVehicleClass, type VehicleClass } from "../constants";
 
 const DAYS = [
   { key: "mon", label: "Mon", full: "Monday" },
@@ -83,7 +84,7 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
   // Vehicle
   const [truckStatus,  setTruckStatus]  = useState<"none"|"assigned"|"manual">("none");
   const [truckReg,     setTruckReg]     = useState("");
-  const [vehClass,     setVehClass]     = useState<"class1"|"class2"|"van">("class1");
+  const [vehClass,     setVehClass]     = useState<VehicleClass>("tractor");
   const [trailerStatus,setTrailerStatus] = useState<"none"|"assigned"|"yard"|"solo"|"other">("none");
   const [trailerReg,   setTrailerReg]   = useState("");
   const [truckChecked, setTruckChecked] = useState(false);
@@ -119,12 +120,12 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
       const jobs = jobsRes.data ?? [];
       const assignedTruck   = jobs.find((j: any) => j.assignedTruck)?.assignedTruck   ?? "";
       const assignedTrailer = jobs.find((j: any) => j.assignedTrailer)?.assignedTrailer ?? "";
-      const assignedClass   = jobs.find((j: any) => j.vehicleClass)?.vehicleClass      ?? "class1";
+      const assignedClass   = normalizeVehicleClass(jobs.find((j: any) => j.reqBodyCategory || j.vehicleClass)?.reqBodyCategory ?? jobs.find((j: any) => j.vehicleClass)?.vehicleClass);
 
       if (assignedTruck) {
         setTruckReg(assignedTruck);
         setTruckStatus("manual");
-        setVehClass(assignedClass as any);
+        setVehClass(assignedClass);
       }
       if (assignedTrailer) {
         setTrailerReg(assignedTrailer);
@@ -371,20 +372,21 @@ export default function StartShiftScreen({ navigation }: { navigation: any }) {
                 placeholderTextColor={COLOURS.muted}
               />
 
-              <Text style={styles.fieldLabel}>Vehicle Class</Text>
+              <Text style={styles.fieldLabel}>Vehicle category</Text>
               <View style={styles.btnRow}>
                 {[
-                  { key: "class1", label: "Class 1 (Artic)" },
-                  { key: "class2", label: "Class 2 (Rigid)" },
+                  { key: "tractor", label: "Tractor unit" },
+                  { key: "rigid", label: "Rigid HGV" },
                   { key: "van",    label: "Van" },
                 ].map(v => (
                   <TouchableOpacity
                     key={v.key}
                     style={[styles.optBtn, vehClass === v.key && styles.optBtnActive]}
                     onPress={() => {
-                      setVehClass(v.key as any);
+                      const nextClass = normalizeVehicleClass(v.key);
+                      setVehClass(nextClass);
                       // Update the segment immediately so ChecklistScreen reads the right class
-                      updateSegment({ vehicleClass: v.key as any });
+                      updateSegment({ vehicleClass: nextClass });
                       setTruckChecked(false);
                     }}
                   >

@@ -26,8 +26,8 @@ interface VehicleConfirmFormProps {
 }
 
 const VEHICLE_CLASSES = [
-  { key: "class1", label: "Class 1 (Artic)" },
-  { key: "class2", label: "Class 2 (Rigid)" },
+  { key: "tractor", label: "Tractor unit" },
+  { key: "rigid", label: "Rigid HGV" },
   { key: "van",    label: "Van" },
 ];
 
@@ -68,7 +68,7 @@ export function VehicleConfirmForm({
             </View>
           )}
 
-          <Text style={s.sectionLabel}>Vehicle Class</Text>
+          <Text style={s.sectionLabel}>Vehicle category</Text>
           <View style={s.unitRow}>
             {VEHICLE_CLASSES.map(v => (
               <TouchableOpacity

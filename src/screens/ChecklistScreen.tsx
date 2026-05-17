@@ -80,12 +80,12 @@ export default function ChecklistScreen({ navigation, route }: Props) {
 
   const title = isTruck
     ? vehicleClass === "van"    ? "Van Walk Round Check"
-    : vehicleClass === "class2" ? "Rigid HGV Walk Round Check"
+    : vehicleClass === "rigid" ? "Rigid HGV Walk Round Check"
     :                             "Truck Walk Round Check"
     : "Trailer Walk Round Check";
 
   function getNext(): string {
-    if (isTruck && vehicleClass === "class1" && currentSegment.hasTrailer && currentSegment.needsTrailerCheck) {
+    if (isTruck && vehicleClass === "tractor" && currentSegment.hasTrailer && currentSegment.needsTrailerCheck) {
       return "TrailerChecklist";
     }
     return returnTo ?? "Jobs";

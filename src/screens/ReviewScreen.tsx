@@ -202,7 +202,7 @@ export function ReviewScreen({ navigation }: ReviewScreenProps) {
         {draft.segments.map((seg, i) => (
           <Card key={seg.id} style={{ marginHorizontal: 16, marginBottom: 8 }}>
             <Text style={styles.sectionLabel}>
-              Segment {i + 1} — {seg.vehicleClass === "van" ? "🚐 Van" : seg.vehicleClass === "class2" ? "🚚 Rigid" : "🚛 Artic"}
+              Segment {i + 1} — {seg.vehicleClass === "van" ? "🚐 Van" : seg.vehicleClass === "rigid" ? "🚚 Rigid" : "🚛 Tractor"}
             </Text>
             <Text style={styles.summaryRow}>
               {seg.truckReg}{seg.hasTrailer ? `  +  ${seg.trailerReg}` : ""}

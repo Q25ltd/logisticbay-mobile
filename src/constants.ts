@@ -1,14 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Vehicle Classes
+// Vehicle Body Categories
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type VehicleClass = "class1" | "class2" | "van";
+export type VehicleClass = "tractor" | "rigid" | "van";
 
 export const VEHICLE_CLASSES = [
-  { key: "class1" as VehicleClass, label: "Class 1",    sub: "Articulated — truck + trailer",  icon: "🚛" },
-  { key: "class2" as VehicleClass, label: "Class 2",    sub: "Rigid HGV — body on truck",      icon: "🚚" },
+  { key: "tractor" as VehicleClass, label: "Tractor unit", sub: "Articulated truck + trailer",   icon: "🚛" },
+  { key: "rigid" as VehicleClass, label: "Rigid HGV",    sub: "Body on truck",                  icon: "🚚" },
   { key: "van"    as VehicleClass, label: "Van",         sub: "Up to 3.5t",                     icon: "🚐" },
 ];
+
+export function normalizeVehicleClass(value: unknown): VehicleClass {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (text === "van") return "van";
+  if (text === "rigid" || /^class\s*2$/.test(text)) return "rigid";
+  if (text === "tractor" || text === "artic" || /^class\s*1$/.test(text)) return "tractor";
+  return "tractor";
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Check result type — three states
@@ -31,10 +39,10 @@ export interface CheckEntry {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CLASS 1 — Truck checks (DVSA 2023, 18 items)
+// TRACTOR UNIT — Truck checks (DVSA 2023, 18 items)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const CLASS1_TRUCK_CHECKS: CheckItem[] = [
+export const TRACTOR_TRUCK_CHECKS: CheckItem[] = [
   // Pre-drive check
   { key: "oil_water",          label: "Oil and water levels — checked and topped up if needed",              category: "inside",  naAllowed: false },
   // Inside
@@ -60,10 +68,10 @@ export const CLASS1_TRUCK_CHECKS: CheckItem[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CLASS 1 — Trailer checks (10 items)
+// TRACTOR UNIT — Trailer checks (10 items)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const CLASS1_TRAILER_CHECKS: CheckItem[] = [
+export const TRACTOR_TRAILER_CHECKS: CheckItem[] = [
   { key: "trailer_lights",     label: "Lights and indicators — all working, clean, correct colour",                  category: "outside", naAllowed: false },
   { key: "trailer_reflectors", label: "Reflectors and number plate — clean, secure and visible",                     category: "outside", naAllowed: false },
   { key: "trailer_tyres",      label: "Tyres and wheels — tread depth (min 1mm), pressure, wheel nuts secure",       category: "outside", naAllowed: false },
@@ -77,13 +85,13 @@ export const CLASS1_TRAILER_CHECKS: CheckItem[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CLASS 2 — Rigid HGV checks (truck + body, no separate trailer)
+// RIGID HGV — Truck + body checks, no separate trailer
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const CLASS2_CHECKS: CheckItem[] = [
+export const RIGID_CHECKS: CheckItem[] = [
   // Pre-drive check
   { key: "oil_water",          label: "Oil and water levels — checked and topped up if needed",              category: "inside",  naAllowed: false },
-  // Inside — same as Class 1 truck
+  // Inside — same as tractor unit truck
   { key: "mirrors_glass",      label: "Mirrors, cameras and glass — no cracks, scratches or excessive tint",         category: "inside",  naAllowed: false },
   { key: "wipers_washers",     label: "Windscreen wipers and washers — working, not damaged",                         category: "inside",  naAllowed: false },
   { key: "dashboard_warnings", label: "Dashboard warning lights and gauges — engine, ABS, EBS, emissions",            category: "inside",  naAllowed: false },
@@ -134,9 +142,9 @@ export const VAN_CHECKS: CheckItem[] = [
 
 export function getChecksForClass(vehicleClass: VehicleClass, checkType: "truck" | "trailer"): CheckItem[] {
   if (vehicleClass === "van")    return checkType === "truck" ? VAN_CHECKS : [];
-  if (vehicleClass === "class2") return checkType === "truck" ? CLASS2_CHECKS : [];
-  // class1
-  return checkType === "truck" ? CLASS1_TRUCK_CHECKS : CLASS1_TRAILER_CHECKS;
+  if (vehicleClass === "rigid") return checkType === "truck" ? RIGID_CHECKS : [];
+  // tractor
+  return checkType === "truck" ? TRACTOR_TRUCK_CHECKS : TRACTOR_TRAILER_CHECKS;
 }
 
 export function buildChecklist(items: CheckItem[]): CheckEntry[] {

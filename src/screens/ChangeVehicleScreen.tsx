@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
+import { normalizeVehicleClass, type VehicleClass } from "../constants";
 import type { ChangeVehicleScreenProps } from "../navigation/types";
 
 const CHANGE_REASONS = [
@@ -27,7 +28,7 @@ export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicle
 
   const currentTruck   = currentSegment?.truckReg ?? "";
   const currentTrailer = currentSegment?.trailerReg ?? "";
-  const currentClass   = currentSegment?.vehicleClass ?? "class1";
+  const currentClass   = normalizeVehicleClass(currentSegment?.vehicleClass);
 
   const [changing,      setChanging]      = useState<"truck"|"trailer"|"both"|null>(null);
   const [dropTrailer,   setDropTrailer]   = useState(false);
@@ -36,7 +37,7 @@ export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicle
   const [adBlueAdded,   setAdBlueAdded]   = useState("");
   const [newTruckReg,   setNewTruckReg]   = useState(currentTruck);
   const [newTrailerReg, setNewTrailerReg] = useState(currentTrailer);
-  const [newClass,      setNewClass]      = useState<"class1"|"class2"|"van">(currentClass);
+  const [newClass,      setNewClass]      = useState<VehicleClass>(currentClass);
   const [reason,        setReason]        = useState("");
 
   function handleConfirm() {
@@ -180,13 +181,13 @@ export default function ChangeVehicleScreen({ navigation, route }: ChangeVehicle
                   autoCapitalize="characters"
                   placeholderTextColor={COLOURS.muted}
                 />
-                <Text style={styles.fieldLabel}>Vehicle Class</Text>
+                <Text style={styles.fieldLabel}>Vehicle category</Text>
                 <View style={styles.btnRow}>
-                  {[{key:"class1",label:"Class 1"},{key:"class2",label:"Class 2"},{key:"van",label:"Van"}].map(v => (
+                  {[{key:"tractor",label:"Tractor unit"},{key:"rigid",label:"Rigid HGV"},{key:"van",label:"Van"}].map(v => (
                     <TouchableOpacity
                       key={v.key}
                       style={[styles.optBtn, newClass === v.key && styles.optBtnActive]}
-                      onPress={() => setNewClass(v.key as any)}
+                      onPress={() => setNewClass(normalizeVehicleClass(v.key))}
                     >
                       <Text style={[styles.optBtnText, newClass === v.key && styles.optBtnTextActive]}>{v.label}</Text>
                     </TouchableOpacity>

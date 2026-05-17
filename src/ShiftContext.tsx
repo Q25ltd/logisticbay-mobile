@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useState } from "react";
 import {
-  buildChecklist, getChecksForClass,
+  buildChecklist, getChecksForClass, normalizeVehicleClass,
   type VehicleClass, type CheckEntry, type CheckResult,
 } from "./constants";
 
@@ -71,7 +71,7 @@ export interface ShiftDraft {
 }
 
 function newSegment(
-  vehicleClass:      VehicleClass  = "class1",
+  vehicleClass:      VehicleClass  = "tractor",
   truckReg:          string        = "",
   trailerReg:        string        = "",
   hasTrailer:        boolean       = true,
@@ -79,22 +79,23 @@ function newSegment(
   needsTrailerCheck: boolean       = true,
   segmentNumber:     number        = 1,
 ): Segment {
+  const bodyCategory = normalizeVehicleClass(vehicleClass);
   return {
     id:               Math.random().toString(36).slice(2),
     segmentNumber,
-    vehicleClass,
+    vehicleClass:     bodyCategory,
     truckReg,
     trailerReg,
-    hasTrailer:        vehicleClass === "class1" ? hasTrailer : false,
+    hasTrailer:        bodyCategory === "tractor" ? hasTrailer : false,
     needsTruckCheck,
-    needsTrailerCheck: vehicleClass === "class1" ? needsTrailerCheck : false,
+    needsTrailerCheck: bodyCategory === "tractor" ? needsTrailerCheck : false,
     odometerStart:    "",
     odometerEnd:      "",
     fuelDrawn:        "",
     adBlueDrawn:      "",
-    truckChecks:      needsTruckCheck ? buildChecklist(getChecksForClass(vehicleClass, "truck")) : [],
-    trailerChecks:    (vehicleClass === "class1" && hasTrailer && needsTrailerCheck)
-                        ? buildChecklist(getChecksForClass("class1", "trailer"))
+    truckChecks:      needsTruckCheck ? buildChecklist(getChecksForClass(bodyCategory, "truck")) : [],
+    trailerChecks:    (bodyCategory === "tractor" && hasTrailer && needsTrailerCheck)
+                        ? buildChecklist(getChecksForClass("tractor", "trailer"))
                         : [],
     deliveries:       [],
     notes:            "",
@@ -171,7 +172,20 @@ export function ShiftProvider({ children }: { children: React.ReactNode }) {
         try {
           const saved = JSON.parse(val);
           if (saved?.shiftId) {
-            setDraftState(saved);
+            setDraftState({
+              ...saved,
+              segments: Array.isArray(saved.segments)
+                ? saved.segments.map((segment: Segment) => {
+                    const bodyCategory = normalizeVehicleClass(segment.vehicleClass);
+                    return {
+                      ...segment,
+                      vehicleClass: bodyCategory,
+                      hasTrailer: bodyCategory === "tractor" ? segment.hasTrailer : false,
+                      needsTrailerCheck: bodyCategory === "tractor" ? segment.needsTrailerCheck : false,
+                    };
+                  })
+                : [newSegment()],
+            });
           }
         } catch {}
       }
@@ -202,16 +216,17 @@ export function ShiftProvider({ children }: { children: React.ReactNode }) {
 
   function setVehicleClass(vc: VehicleClass) {
     setDraft(d => {
+      const bodyCategory = normalizeVehicleClass(vc);
       const segs = [...d.segments];
       const last = segs[segs.length - 1];
-      const hasTrailer = vc === "class1" ? last.hasTrailer : false;
+      const hasTrailer = bodyCategory === "tractor" ? last.hasTrailer : false;
       segs[segs.length - 1] = {
         ...last,
-        vehicleClass:  vc,
+        vehicleClass:  bodyCategory,
         hasTrailer,
-        truckChecks:   buildChecklist(getChecksForClass(vc, "truck")),
-        trailerChecks: (vc === "class1" && hasTrailer)
-                         ? buildChecklist(getChecksForClass("class1", "trailer"))
+        truckChecks:   buildChecklist(getChecksForClass(bodyCategory, "truck")),
+        trailerChecks: (bodyCategory === "tractor" && hasTrailer)
+                         ? buildChecklist(getChecksForClass("tractor", "trailer"))
                          : [],
       };
       return { ...d, segments: segs };

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from "../api";
 import { COLOURS, Button, Card } from "../components";
 import { useShift } from "../ShiftContext";
+import { normalizeVehicleClass, type VehicleClass } from "../constants";
 
 const STATUS_LABELS: Record<string,string> = {
   pending:         "Pending",
@@ -65,7 +66,7 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
   // Vehicle confirmation
   const [truckReg,     setTruckReg]     = useState("");
   const [trailerReg,   setTrailerReg]   = useState("");
-  const [vehicleClass, setVehicleClass] = useState("class1");
+  const [vehicleClass, setVehicleClass] = useState<VehicleClass>("tractor");
   const [vehicleConfirmed, setVehicleConfirmed] = useState(false);
   const [showVehicleForm,  setShowVehicleForm]  = useState(false);
 
@@ -86,7 +87,9 @@ export default function JobDetailScreen({ navigation, route }: { navigation: any
       // Pre-fill vehicle from planner assignment
       if (res.data.assignedTruck)   setTruckReg(res.data.assignedTruck);
       if (res.data.assignedTrailer) setTrailerReg(res.data.assignedTrailer);
-      if (res.data.vehicleClass)    setVehicleClass(res.data.vehicleClass);
+      if (res.data.reqBodyCategory || res.data.vehicleClass) {
+        setVehicleClass(normalizeVehicleClass(res.data.reqBodyCategory || res.data.vehicleClass));
+      }
       // Pre-fill delivery qty from collected qty
       if (res.data.actualQuantity) setDeliveredQty(res.data.actualQuantity);
       if (res.data.actualUnit)     setActualUnit(res.data.actualUnit);
@@ -256,17 +259,17 @@ Use assigned trailer?`,
               </View>
             )}
 
-            <Text style={styles.sectionLabel}>Vehicle Class</Text>
+            <Text style={styles.sectionLabel}>Vehicle category</Text>
             <View style={styles.unitRow}>
               {[
-                { key: "class1", label: "Class 1 (Artic)" },
-                { key: "class2", label: "Class 2 (Rigid)" },
+                { key: "tractor", label: "Tractor unit" },
+                { key: "rigid", label: "Rigid HGV" },
                 { key: "van",    label: "Van" },
               ].map(v => (
                 <TouchableOpacity
                   key={v.key}
                   style={[styles.unitBtn, vehicleClass === v.key && styles.unitBtnActive]}
-                  onPress={() => setVehicleClass(v.key)}
+                  onPress={() => setVehicleClass(normalizeVehicleClass(v.key))}
                 >
                   <Text style={[styles.unitBtnText, vehicleClass === v.key && styles.unitBtnTextActive]}>{v.label}</Text>
                 </TouchableOpacity>
